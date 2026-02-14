@@ -58,6 +58,9 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: MAJOR FEATURE - Autonomous Orchestrator: Plan→Execute→Observe→Reflect loop di PlannerAgent
+- 2026-02-14: FEATURE - sources/orchestrator.py: AutonomousOrchestrator dengan WebSocket status updates, auto-retry, recovery plan
+- 2026-02-14: UPGRADE - Planner prompt: autonomous principles, detailed task instructions, no-confirmation policy
 - 2026-02-14: CRITICAL FIX - Sandbox: auto-strip server start code (app.run(), uvicorn.run(), if __name__) sebelum eksekusi
 - 2026-02-14: CRITICAL FIX - Port 5000 conflict resolved: sandbox mencegah kode bind ke port 5000
 - 2026-02-14: FEATURE - Auto-install dependencies script (install_deps.py) terintegrasi di startup

@@ -355,6 +355,11 @@ async def think_wrapper(interaction, query):
         interaction.last_query = query
         logger.info("Agents request is being processed")
         await ws_manager.send_status("system", "Memproses permintaan...", 0.1, query[:100])
+
+        agent = interaction.router.select_agent(query)
+        if agent:
+            await ws_manager.send_agent_switch(agent.agent_name, agent.type)
+
         success = await interaction.think()
         if not success:
             interaction.last_answer = "Error: No answer from agent"

@@ -87,6 +87,14 @@ class ConnectionManager:
             "timestamp": time.time(),
         })
 
+    async def send_agent_switch(self, agent_name: str, agent_type: str):
+        await self.broadcast({
+            "type": "agent_switch",
+            "agent_name": agent_name,
+            "agent_type": agent_type,
+            "timestamp": time.time(),
+        })
+
     async def send_agent_thinking(self, agent_name: str, thinking_message: str):
         await self.broadcast({
             "type": "agent_thinking",

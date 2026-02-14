@@ -68,6 +68,13 @@ function App() {
               setRealtimeProgress(msg.progress || 0);
               setRealtimeDetails(msg.details || "");
               break;
+            case "agent_switch":
+              if (msg.agent_type === "browser_agent") {
+                setActiveView("browser");
+              } else if (msg.agent_type === "code_agent") {
+                setActiveView("preview");
+              }
+              break;
             case "execution":
               break;
             case "file_update":
@@ -79,6 +86,7 @@ function App() {
               if (msg.preview_url) {
                 setSelectedPreviewFile(msg.preview_url.replace("/api/preview/", ""));
               }
+              setActiveView("preview");
               break;
             case "pong":
               break;

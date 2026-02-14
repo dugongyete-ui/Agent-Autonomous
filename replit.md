@@ -58,6 +58,12 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: FIX - Routing pencarian web + auto-switch tab
+  - Router sekarang mengenali keyword Indonesia: carikan, cari, temukan + target kata (website, drama, film, dll)
+  - Web search query diprioritaskan sebelum code task check
+  - Tambah 18 few-shot examples pencarian web Bahasa Indonesia
+  - WebSocket send_agent_switch: frontend auto-switch ke Browser tab saat BrowserAgent aktif
+  - Frontend auto-switch ke Preview tab saat preview_ready atau CoderAgent aktif
 - 2026-02-14: BUG FIX - New Project tidak membersihkan file lama
   - Tambah endpoint POST /new_project yang menghapus semua file di work_dir + reset chat + reset agent memory
   - Frontend handleNewChat sekarang memanggil /new_project bukan /new_chat

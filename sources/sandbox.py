@@ -444,12 +444,22 @@ class SafeExecutor:
         ]
         return any(pattern in cmd_lower for pattern in install_patterns)
 
+    def _is_pip_install(self, command: str) -> bool:
+        cmd_lower = command.lower().strip()
+        return cmd_lower.startswith(("pip install", "pip3 install"))
+
     def _execute_shell(self, command: str) -> SandboxResult:
         if self._is_package_install(command):
-            self.logger.info(f"Skipped package install command: {command[:100]}")
+            if self._is_pip_install(command):
+                if '--break-system-packages' not in command:
+                    command = command.replace('pip install', 'pip install --break-system-packages', 1)
+                    command = command.replace('pip3 install', 'pip3 install --break-system-packages', 1)
+                self.logger.info(f"Autonomous: executing pip install: {command[:100]}")
+                return self._execute_shell_raw(command)
+            self.logger.info(f"Skipped non-pip install command: {command[:100]}")
             return SandboxResult(
                 success=True,
-                output=f"[skipped] Package install skipped (packages are pre-installed): {command.strip()}",
+                output=f"[skipped] Package install skipped: {command.strip()}",
                 errors="", execution_time=0.0, language='bash'
             )
 
@@ -462,6 +472,9 @@ class SafeExecutor:
                 blocked=True, blocked_reason=reason
             )
 
+        return self._execute_shell_raw(command)
+
+    def _execute_shell_raw(self, command: str) -> SandboxResult:
         start_time = time.time()
         self.logger.info(f"Executing bash: {command[:100]}...")
         try:

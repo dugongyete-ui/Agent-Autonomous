@@ -58,6 +58,15 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-15: FIX - Browser tab tidak muncul di mobile + screenshot tidak auto-refresh
+  - Mobile bottom nav sekarang menampilkan semua 5 tab (Chat, Preview, Editor, Files, Browser)
+  - CSS responsive: padding/font-size diperkecil untuk 5 tab di mobile
+  - Screenshot auto-refresh setiap 3 detik saat Browser tab aktif atau BrowserAgent sedang bekerja
+  - Tambah state activeAgentType untuk melacak agent yang sedang aktif
+  - handleSubmit tidak lagi force switch ke Chat tab - user tetap di tab aktif
+  - activeAgentType di-reset otomatis 10 detik setelah proses selesai
+  - WebSocket agent_switch langsung fetch screenshot saat BrowserAgent aktif
+  - GROQ_API_KEY berhasil di-set sebagai secret
 - 2026-02-14: FIX - Routing pencarian web + auto-switch tab
   - Router sekarang mengenali keyword Indonesia: carikan, cari, temukan + target kata (website, drama, film, dll)
   - Web search query diprioritaskan sebelum code task check

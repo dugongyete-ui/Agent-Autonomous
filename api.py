@@ -242,6 +242,55 @@ async def new_chat():
     await ws_manager.send_status("system", "Chat baru dimulai", 0.0)
     return JSONResponse(status_code=200, content={"status": "new_chat_created"})
 
+@api.post("/new_project")
+async def new_project():
+    global query_resp_history, is_generating
+    logger.info("New project endpoint called - clearing work_dir and resetting all state")
+    is_generating = False
+    query_resp_history = []
+
+    if interaction is not None:
+        if config.getboolean('MAIN', 'save_session'):
+            interaction.save_session()
+        interaction.last_answer = None
+        interaction.last_reasoning = None
+        interaction.last_query = None
+        interaction.current_agent = None
+        for agent in interaction.agents:
+            agent.memory.reset()
+            agent.blocks_result = []
+            agent.stop = False
+            agent.success = True
+            agent.last_answer = ""
+            agent.last_reasoning = ""
+            agent.status_message = "Siap"
+
+    cleared_files = 0
+    try:
+        if os.path.isdir(work_dir_path):
+            for item in os.listdir(work_dir_path):
+                item_path = os.path.join(work_dir_path, item)
+                if item.startswith('.'):
+                    continue
+                try:
+                    if os.path.isfile(item_path):
+                        os.remove(item_path)
+                        cleared_files += 1
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+                        cleared_files += 1
+                except Exception as e:
+                    logger.error(f"Failed to remove {item_path}: {e}")
+        logger.info(f"Cleared {cleared_files} items from work_dir")
+    except Exception as e:
+        logger.error(f"Failed to clear work_dir: {e}")
+
+    await ws_manager.send_status("system", "Project baru dimulai", 0.0)
+    return JSONResponse(status_code=200, content={
+        "status": "new_project_created",
+        "cleared_files": cleared_files
+    })
+
 @api.post("/clear_history")
 async def clear_history():
     global query_resp_history

@@ -312,14 +312,14 @@ class CoderAgent(Agent):
             self.logger.info(f"Attempt {attempt + 1}:\n{answer}")
             exec_success, feedback = self.execute_modules_with_sandbox(answer) if self.use_sandbox else self.execute_modules(answer)
             self.logger.info(f"Execution result: {exec_success}")
+            verification = self._verify_saved_files(answer) if exec_success else ""
             answer = self.remove_blocks(answer)
+            if verification:
+                answer = answer + "\n" + verification
             self.last_answer = answer
             await asyncio.sleep(0)
             if exec_success:
                 self.status_message = "✅ Selesai"
-                verification = self._verify_saved_files(answer)
-                if verification:
-                    self.last_answer = answer + "\n" + verification
                 break
             pretty_print(f"❌ Execution failure:\n{feedback}", color="failure")
             pretty_print("🔧 Auto-debugging...", color="status")

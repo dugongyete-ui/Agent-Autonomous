@@ -78,5 +78,48 @@ class ConnectionManager:
             "timestamp": time.time(),
         })
 
+    async def send_peor_update(self, phase: str, step_id: int = 0, details: str = ""):
+        await self.broadcast({
+            "type": "peor",
+            "phase": phase,
+            "step_id": step_id,
+            "details": details,
+            "timestamp": time.time(),
+        })
+
+    async def send_agent_thinking(self, agent_name: str, thinking_message: str):
+        await self.broadcast({
+            "type": "agent_thinking",
+            "agent_name": agent_name,
+            "thinking_message": thinking_message,
+            "timestamp": time.time(),
+        })
+
+    async def send_execution_log(self, level: str, message: str, agent_name: str = ""):
+        await self.broadcast({
+            "type": "execution_log",
+            "level": level,
+            "message": message,
+            "agent_name": agent_name,
+            "timestamp": time.time(),
+        })
+
+    async def send_plan_progress(self, total_steps: int, completed_steps: int, failed_steps: int,
+                                  current_step_id: int = 0, current_step_description: str = "",
+                                  elapsed_time: float = 0.0, estimated_remaining: float = 0.0,
+                                  success_rate: float = 0.0):
+        await self.broadcast({
+            "type": "plan_progress",
+            "total_steps": total_steps,
+            "completed_steps": completed_steps,
+            "failed_steps": failed_steps,
+            "current_step_id": current_step_id,
+            "current_step_description": current_step_description,
+            "elapsed_time": elapsed_time,
+            "estimated_remaining": estimated_remaining,
+            "success_rate": success_rate,
+            "timestamp": time.time(),
+        })
+
 
 ws_manager = ConnectionManager()

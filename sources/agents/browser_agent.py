@@ -217,21 +217,70 @@ class BrowserAgent(Agent):
     def stringify_search_results(self, results_arr: List[str]) -> str:
         return '\n\n'.join([f"Link: {res['link']}\nPreview: {res['snippet']}" for res in results_arr])
     
+    def _extract_structured_data(self, page_text: str) -> Dict[str, list]:
+        """Extract common data patterns from page text using regex."""
+        data = {}
+        prices = re.findall(r'(?:Rp\.?\s?|IDR\s?|\$|USD\s?|€|£)\s?[\d.,]+(?:\s?(?:juta|ribu|rb|jt))?', page_text, re.IGNORECASE)
+        if prices:
+            data['prices'] = list(set(prices))
+        dates = re.findall(r'\b\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}\b|\b\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2,4}\b', page_text, re.IGNORECASE)
+        if dates:
+            data['dates'] = list(set(dates))
+        emails = re.findall(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', page_text)
+        if emails:
+            data['emails'] = list(set(emails))
+        phones = re.findall(r'(?:\+62|62|0)\s?[\d\-\s]{8,15}', page_text)
+        if phones:
+            data['phones'] = list(set([p.strip() for p in phones]))
+        addresses = re.findall(r'(?:Jl\.|Jalan|Alamat|Gedung|Komplek|Blok)\s?[A-Za-z0-9\s,.\-]+(?:No\.\s?\d+)?', page_text, re.IGNORECASE)
+        if addresses:
+            data['addresses'] = list(set(addresses))
+        return data
+
+    def _score_page_relevance(self, page_text: str, user_query: str) -> int:
+        """Score page relevance based on keyword matches. Returns 0-100."""
+        if not page_text or not user_query:
+            return 0
+        query_keywords = [kw.lower().strip() for kw in user_query.split() if len(kw.strip()) > 2]
+        if not query_keywords:
+            return 0
+        page_text_lower = page_text.lower()
+        matches = sum(1 for kw in query_keywords if kw in page_text_lower)
+        score = int((matches / len(query_keywords)) * 100)
+        return min(score, 100)
+
+    def _summarize_notes(self) -> str:
+        """Return a deduplicated, concatenated summary of all notes."""
+        seen = set()
+        unique_notes = []
+        for note in self.notes:
+            note_stripped = note.strip()
+            if note_stripped and note_stripped.lower() not in seen:
+                seen.add(note_stripped.lower())
+                unique_notes.append(note_stripped)
+        return '\n'.join(unique_notes)
+
     def parse_answer(self, text):
         lines = text.split('\n')
         saving = False
         buffer = []
         links = []
+        structured_data = []
         for line in lines:
             if line == '' or 'action:' in line.lower():
                 saving = False
             if "note" in line.lower():
                 saving = True
+            if line.strip().upper().startswith("DATA:"):
+                structured_data.append(line.strip())
             if saving:
                 buffer.append(line.replace("notes:", ''))
             else:
                 links.extend(self.extract_links(line))
-        self.notes.append('. '.join(buffer).strip())
+        note_text = '. '.join(buffer).strip()
+        if structured_data:
+            note_text += ' | ' + ' | '.join(structured_data)
+        self.notes.append(note_text)
         return links
     
     def select_link(self, links: List[str]) -> str | None:
@@ -350,7 +399,7 @@ class BrowserAgent(Agent):
         animate_thinking(f"Searching...", color="status")
         self.status_message = "Searching..."
         search_result_raw = self.tools["web_search"].execute([ai_prompt], False)
-        search_result = self.jsonify_search_results(search_result_raw)[:16]
+        search_result = self.jsonify_search_results(search_result_raw)[:20]
         self.show_search_results(search_result)
         prompt = self.make_newsearch_prompt(user_prompt, search_result)
         unvisited = [None]

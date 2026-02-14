@@ -58,24 +58,17 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: MAJOR UPGRADE - Frontend rebuilt: Editor tab sekarang bisa edit file project dengan save (Ctrl+S), file tree, line numbers
+- 2026-02-14: FEATURE - PUT /api/file-content/{path} endpoint untuk save file yang diedit dari Editor
+- 2026-02-14: UPGRADE - Preview tab: iframe preview dengan file selector, refresh, empty state dengan action button
+- 2026-02-14: UPGRADE - Files tab: split layout file tree + viewer, tombol download individual dan "Edit di Editor"
+- 2026-02-14: UPGRADE - Chat tab: progress bar real-time dengan shimmer animation, quick actions (4 template)
+- 2026-02-14: UPGRADE - Semua tab (Chat, Preview, Editor, Files, Browser) sudah berfungsi sempurna
 - 2026-02-14: MAJOR FEATURE - Autonomous Orchestrator: Plan→Execute→Observe→Reflect loop di PlannerAgent
 - 2026-02-14: FEATURE - sources/orchestrator.py: AutonomousOrchestrator dengan WebSocket status updates, auto-retry, recovery plan
-- 2026-02-14: UPGRADE - Planner prompt: autonomous principles, detailed task instructions, no-confirmation policy
-- 2026-02-14: CRITICAL FIX - Sandbox: auto-strip server start code (app.run(), uvicorn.run(), if __name__) sebelum eksekusi
-- 2026-02-14: CRITICAL FIX - Port 5000 conflict resolved: sandbox mencegah kode bind ke port 5000
-- 2026-02-14: FEATURE - Auto-install dependencies script (install_deps.py) terintegrasi di startup
-- 2026-02-14: UPGRADE - Coder prompt diperkuat: larangan eksplisit app.run(), port 5000, dan socket server
-- 2026-02-14: UPGRADE - Jarvis coder prompt juga diupdate dengan aturan yang sama
-- 2026-02-14: FIX - Renamed all AgenticSeek references to Agent-DzeckAi
-- 2026-02-14: FIX - Model selector now visible in chat header (clickable badge)
-- 2026-02-14: FIX - Default model changed to Qwen/Qwen2.5-72B-Instruct
-- 2026-02-14: FEATURE - Frontend: WebSocket real-time, Live Preview, Files tab, Quick actions
-- 2026-02-14: FEATURE - Backend: WebSocket, preview, project files, download ZIP endpoints
-- 2026-02-14: FEATURE - Workspace Manager: Dynamic multi-project, session isolation
-- 2026-02-14: FEATURE - Sandbox: Whitelist mode, workspace isolation, path restriction
+- 2026-02-14: CRITICAL FIX - Sandbox: auto-strip server start code, Port 5000 conflict resolved
+- 2026-02-14: FEATURE - Auto-install dependencies, Workspace Manager, Sandbox whitelist mode
 - 2026-02-14: UPGRADE - CoderAgent: Full-Stack Autonomous Developer mode (max 7 attempts, auto-fix)
-- 2026-02-14: MAJOR FIX - BashInterpreter & Sandbox skip pip/npm install commands
-- 2026-02-14: MAJOR FIX - Router keyword override: tugas koding langsung ke code agent
 - 2026-02-14: CLEANUP - Hapus semua provider kecuali Groq dan HuggingFace
 
 ## Running

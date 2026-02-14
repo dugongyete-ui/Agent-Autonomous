@@ -238,5 +238,28 @@ if [ -n "$WORK_DIR" ]; then
 fi
 
 echo ""
+echo "[EXTRA] Rebuild frontend jika diperlukan..."
+if [ -d "frontend/agentic-seek-front" ]; then
+  cd frontend/agentic-seek-front
+  if check_command npm; then
+    echo "  Installing npm dependencies..."
+    npm install --silent 2>/dev/null
+    echo "  Building frontend..."
+    npx react-scripts build 2>/dev/null
+    if [ $? -eq 0 ]; then
+      echo "  -> Frontend build OK"
+    else
+      echo "  -> Frontend build GAGAL (non-critical)"
+    fi
+    cd ../..
+  else
+    echo "  -> npm tidak ditemukan, skip frontend build"
+    cd ../..
+  fi
+else
+  echo "  -> Folder frontend tidak ditemukan, skip"
+fi
+
+echo ""
 echo "  Selesai! Jalankan: python api.py"
 echo "============================================"

@@ -5,7 +5,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["cacert", "cargo", "chromedriver", "chromium", "ffmpeg", "ffmpeg-full", "geckodriver", "glibcLocales", "libiconv", "libsndfile", "libxcrypt", "pkg-config", "portaudio", "redis", "rustc", "xsimd"]
+packages = ["cacert", "cargo", "chromedriver", "chromium", "ffmpeg", "ffmpeg-full", "freetype", "geckodriver", "glibcLocales", "lcms2", "libiconv", "libimagequant", "libjpeg", "libsndfile", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "pkg-config", "portaudio", "redis", "rustc", "tcl", "tk", "xsimd", "zlib"]
 
 [workflows]
 runButton = "Project"

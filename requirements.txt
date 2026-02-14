@@ -47,3 +47,4 @@ nltk
 regex
 pillow
 ollama
+protobuf

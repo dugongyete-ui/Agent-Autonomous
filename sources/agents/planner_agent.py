@@ -248,10 +248,8 @@ class PlannerAgent(Agent):
             tasks.append(agent)
         if len(tasks) == 0:
             return []
-        if len(tasks_names) != len(tasks):
-            names = [task['task'] for task in tasks]
-            return list(map(list, zip(names, tasks)))
-        return list(map(list, zip(tasks_names, tasks)))
+        names = [task['task'] for task in tasks]
+        return list(map(list, zip(names, tasks)))
     
     def make_prompt(self, task: str, agent_infos_dict: dict) -> str:
         """

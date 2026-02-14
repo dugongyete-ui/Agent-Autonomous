@@ -3,96 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio</title>
+    <title>Kalkulator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
         }
-        header {
-            background-color: #333;
-            color: #fff;
+        #kalkulator {
+            width: 300px;
+            margin: 50px auto;
             padding: 20px;
-            text-align: center;
-        }
-        nav {
-            background-color: #444;
-            padding: 10px;
-            text-align: center;
-        }
-        nav a {
-            color: #fff;
-            text-decoration: none;
-            margin: 10px;
-        }
-        nav a:hover {
-            color: #ccc;
-        }
-        main {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-        .project {
-            background-color: #fff;
-            padding: 20px;
-            margin: 20px;
-            border: 1px solid #ddd;
+            border: 1px solid #ccc;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        .project img {
+        #kalkulator input {
             width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 10px 10px 0 0;
-        }
-        .project h2 {
-            margin: 0;
+            height: 40px;
+            margin-bottom: 20px;
             padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
         }
-        .project p {
+        #kalkulator button {
+            width: 100%;
+            height: 40px;
+            background-color: #4CAF50;
+            color: #fff;
             padding: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        #kalkulator button:hover {
+            background-color: #3e8e41;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Portfolio</h1>
-    </header>
-    <nav>
-        <a href="#projects">Proyek</a>
-        <a href="#about">Tentang Saya</a>
-    </nav>
-    <main>
-        <section id="projects">
-            <h1>Proyek</h1>
-            <div class="project">
-                <img src="https://via.placeholder.com/400x200" alt="Proyek 1">
-                <h2>Proyek 1</h2>
-                <p>Deskripsi proyek 1.</p>
-            </div>
-            <div class="project">
-                <img src="https://via.placeholder.com/400x200" alt="Proyek 2">
-                <h2>Proyek 2</h2>
-                <p>Deskripsi proyek 2.</p>
-            </div>
-        </section>
-        <section id="about">
-            <h1>Tentang Saya</h1>
-            <p>Deskripsi tentang saya.</p>
-        </section>
-    </main>
+    <div id="kalkulator">
+        <h2>Kalkulator</h2>
+        <input type="number" id="angka1" placeholder="Angka 1">
+        <input type="number" id="angka2" placeholder="Angka 2">
+        <select id="operator">
+            <option value="+">+</option>
+            <option value="-">-</option>
+            <option value="*">*</option>
+            <option value="/">/</option>
+        </select>
+        <button id="tombol">Hitung</button>
+        <p id="hasil"></p>
+    </div>
+
     <script>
-        // JavaScript logic lengkap
-        const projects = document.querySelectorAll('.project');
-        projects.forEach((project) => {
-            project.addEventListener('click', () => {
-                alert('Proyek diklik!');
-            });
+        const tombol = document.getElementById('tombol');
+        const angka1 = document.getElementById('angka1');
+        const angka2 = document.getElementById('angka2');
+        const operator = document.getElementById('operator');
+        const hasil = document.getElementById('hasil');
+
+        tombol.addEventListener('click', () => {
+            const num1 = parseFloat(angka1.value);
+            const num2 = parseFloat(angka2.value);
+            const oper = operator.value;
+
+            let result;
+            switch (oper) {
+                case '+':
+                    result = num1 + num2;
+                    break;
+                case '-':
+                    result = num1 - num2;
+                    break;
+                case '*':
+                    result = num1 * num2;
+                    break;
+                case '/':
+                    if (num2 !== 0) {
+                        result = num1 / num2;
+                    } else {
+                        hasil.innerText = 'Error: Pembagian dengan nol!';
+                        return;
+                    }
+                    break;
+                default:
+                    hasil.innerText = 'Error: Operator tidak valid!';
+                    return;
+            }
+
+            hasil.innerText = `Hasil: ${result}`;
         });
     </script>
 </body>

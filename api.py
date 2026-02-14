@@ -368,8 +368,8 @@ async def get_model_config():
             "api_key_env": "TOGETHER_API_KEY"
         },
         "huggingface": {
-            "name": "HuggingFace",
-            "models": ["Qwen/Qwen2.5-72B-Instruct", "meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"],
+            "name": "HuggingFace (Gratis)",
+            "models": ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct", "meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1", "microsoft/DialoGPT-medium"],
             "server": "https://api-inference.huggingface.co",
             "api_key_env": "HUGGINGFACE_API_KEY"
         },

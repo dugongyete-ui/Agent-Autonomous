@@ -56,9 +56,10 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Full list in setup_dependencies.sh
 
 ## Configuration
-- Provider: groq (set in config.ini)
-- Model: llama-3.3-70b-versatile
-- GROQ_API_KEY: stored as secret
+- Provider: huggingface (set in config.ini) - GRATIS
+- Model: Qwen/Qwen2.5-72B-Instruct (default, terbesar)
+- HUGGINGFACE_API_KEY: stored as secret
+- GROQ_API_KEY: stored as secret (backup provider)
 - agent_name: Dzeck
 - Browser: headless mode (required for Replit environment)
 - work_dir: /home/runner/workspace/work
@@ -77,6 +78,9 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Auto-reinitialize agent system saat model diganti, feedback di chat
 
 ## Recent Changes
+- 2026-02-14: Switched provider to HuggingFace (gratis) with Qwen/Qwen2.5-72B-Instruct model
+- 2026-02-14: Added Qwen free models (0.5B, 1.5B, 3B, 72B) to HuggingFace model list in UI
+- 2026-02-14: Added huggingface to unsafe_providers for proper API key validation
 - 2026-02-14: Fixed all dependencies - installed PyTorch CPU, transformers, adaptive-classifier, and 37 total modules verified
 - 2026-02-14: Updated setup_dependencies.sh with improved reliability, PyTorch CPU fallback, and comprehensive module verification
 - 2026-02-14: Renamed project from "KodeAgent" to "Agent Dzeck AI" across entire codebase

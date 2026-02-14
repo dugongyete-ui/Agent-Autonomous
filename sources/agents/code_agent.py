@@ -10,14 +10,13 @@ from sources.tools.BashInterpreter import BashInterpreter
 from sources.tools.JavaInterpreter import JavaInterpreter
 from sources.tools.fileFinder import FileFinder
 from sources.tools.SaveTool import HTMLSaveTool, CSSSaveTool, JSSaveTool, TypeScriptSaveTool, SQLSaveTool
+from sources.tools.terminal import PersistentTerminal
+from sources.tools.web_viewer import WebViewer
 from sources.logger import Logger
 from sources.memory import Memory
 from sources.sandbox import Sandbox
 
 class CoderAgent(Agent):
-    """
-    The code agent is an agent that can write and execute code.
-    """
     def __init__(self, name, prompt_path, provider, verbose=False, use_sandbox=True):
         super().__init__(name, prompt_path, provider, verbose, None)
         self.tools = {
@@ -39,16 +38,18 @@ class CoderAgent(Agent):
             self.sandbox = Sandbox(work_dir=self.work_dir)
         else:
             self.sandbox = None
+        self.terminal = PersistentTerminal(work_dir=self.work_dir)
+        self.web_viewer = WebViewer()
         self.role = "code"
         self.type = "code_agent"
         self.logger = Logger("code_agent.log")
         self.memory = Memory(self.load_prompt(prompt_path),
-                        recover_last_session=False, # session recovery in handled by the interaction class
+                        recover_last_session=False,
                         memory_compression=False,
                         model_provider=provider.get_model_name())
-    
+        self.installed_packages = set()
+
     def add_sys_info_prompt(self, prompt):
-        """Add system information to the prompt."""
         info = (
             f"System Info:\n"
             f"OS: {platform.system()} {platform.release()}\n"
@@ -56,17 +57,17 @@ class CoderAgent(Agent):
             f"Environment: Server headless (tanpa display/GUI)\n"
             f"Direktori kerja: {self.work_dir}\n"
             f"Library tersedia: flask, requests, beautifulsoup4, numpy, sqlite3, json, csv, dan library standar Python\n"
-            f"\nATURAN WAJIB:\n"
-            f"- Simpan semua file di direktori kerja dengan format ```bahasa:namafile\n"
-            f"- JANGAN jalankan pip install atau npm install via bash\n"
-            f"- JANGAN gunakan Tkinter atau library GUI desktop\n"
-            f"- JANGAN jalankan server (python app.py, flask run) via bash\n"
-            f"- JANGAN tulis app.run() atau if __name__ == '__main__' di kode Python\n"
-            f"- Port 5000 SUDAH DIGUNAKAN oleh sistem. JANGAN pernah bind ke port 5000\n"
-            f"- Untuk website: buat sebagai HTML statis lengkap (HTML+CSS+JS dalam satu file)\n"
-            f"- Untuk backend: simpan file saja tanpa app.run(), jangan jalankan server\n"
-            f"- Untuk kalkulator/tools: buat sebagai HTML+CSS+JS statis yang bisa dibuka langsung di browser\n"
-            f"- SELALU buat kode yang LENGKAP, FUNGSIONAL, dan SIAP PAKAI"
+            f"\nMODE AUTONOMOUS AKTIF:\n"
+            f"- Kamu adalah AI Agent Autonomous. LANGSUNG kerjakan tanpa bertanya.\n"
+            f"- Jika butuh install package, sistem akan auto-install.\n"
+            f"- Simpan file dengan format ```bahasa:namafile\n"
+            f"- JANGAN tulis app.run(), uvicorn.run(), atau menjalankan server\n"
+            f"- Port 5000 SUDAH DIGUNAKAN. JANGAN bind ke port 5000\n"
+            f"- JANGAN gunakan Tkinter/GUI desktop (headless)\n"
+            f"- Untuk website: buat HTML statis lengkap (HTML+CSS+JS)\n"
+            f"- Untuk backend: simpan file tanpa app.run()\n"
+            f"- SELALU buat kode LENGKAP, FUNGSIONAL, dan SIAP PAKAI\n"
+            f"- JANGAN jelaskan, LANGSUNG tulis kode"
         )
         return f"{prompt}\n\n{info}"
 
@@ -82,6 +83,69 @@ class CoderAgent(Agent):
     def _is_save_only_language(self, name: str) -> bool:
         return name in ('c', 'go', 'java', 'html', 'css', 'javascript', 'typescript', 'sql')
 
+    def _auto_install_from_error(self, error_text: str) -> bool:
+        import re
+        module_match = re.search(r"No module named ['\"]([^'\"]+)['\"]", error_text)
+        if not module_match:
+            return False
+        module_name = module_match.group(1).split('.')[0]
+        if module_name in self.installed_packages:
+            return False
+
+        pkg_map = {
+            'bs4': 'beautifulsoup4',
+            'cv2': 'opencv-python',
+            'PIL': 'Pillow',
+            'sklearn': 'scikit-learn',
+            'yaml': 'pyyaml',
+            'dotenv': 'python-dotenv',
+            'gi': 'PyGObject',
+            'lxml': 'lxml',
+            'matplotlib': 'matplotlib',
+            'pandas': 'pandas',
+            'scipy': 'scipy',
+            'seaborn': 'seaborn',
+        }
+        pkg_name = pkg_map.get(module_name, module_name)
+
+        self.logger.info(f"Auto-installing: {pkg_name}")
+        pretty_print(f"📦 Auto-installing: {pkg_name}...", color="status")
+        result = self.terminal.install_package(pkg_name)
+        if result['success']:
+            self.installed_packages.add(module_name)
+            pretty_print(f"✅ Installed: {pkg_name}", color="success")
+            return True
+        else:
+            pretty_print(f"❌ Failed to install {pkg_name}: {result.get('stderr', '')}", color="failure")
+            return False
+
+    def _verify_saved_files(self, answer: str) -> str:
+        import re
+        file_pattern = r'```\w+:([^\n]+)'
+        saved_files = re.findall(file_pattern, answer)
+        if not saved_files:
+            return ""
+
+        verification_lines = []
+        for fname in saved_files:
+            fpath = os.path.join(self.work_dir, fname)
+            if os.path.exists(fpath):
+                size = os.path.getsize(fpath)
+                if fname.endswith('.html'):
+                    check = self.web_viewer.verify_html_file(fpath)
+                    if check['success']:
+                        verification_lines.append(f"✅ {fname} ({size}B) - HTML valid")
+                    else:
+                        verification_lines.append(f"⚠️ {fname} ({size}B) - {check['message']}")
+                else:
+                    verification_lines.append(f"✅ {fname} ({size}B)")
+            else:
+                verification_lines.append(f"❌ {fname} - tidak ditemukan")
+
+        if verification_lines:
+            return "\n📁 Verifikasi file:\n" + "\n".join(verification_lines)
+        return ""
+
     def execute_modules_with_sandbox(self, answer: str):
         feedback = ""
         success = True
@@ -89,6 +153,8 @@ class CoderAgent(Agent):
             answer = "I will execute:\n" + answer
 
         self.success = True
+        saved_files = []
+
         for name, tool in self.tools.items():
             feedback = ""
             blocks, save_path = tool.load_exec_block(answer)
@@ -96,7 +162,8 @@ class CoderAgent(Agent):
             if blocks is not None:
                 if save_path is not None:
                     tool.save_block(blocks, save_path)
-                    pretty_print(f"File saved: {save_path}", color="status")
+                    saved_files.append(save_path)
+                    pretty_print(f"📄 File saved: {save_path}", color="status")
 
                 if save_path is not None and self._is_save_only_language(name):
                     feedback = f"[success] File {save_path} berhasil disimpan."
@@ -104,12 +171,16 @@ class CoderAgent(Agent):
                     self.memory.push('user', feedback)
                     continue
 
-                pretty_print(f"Executing {len(blocks)} {name} blocks (sandbox)...", color="status")
+                pretty_print(f"⚡ Executing {len(blocks)} {name} blocks...", color="status")
                 for block in blocks:
                     self.show_block(block)
                     if name in ('python', 'bash'):
                         sb_success, sb_feedback = self.sandbox_execute(block, name)
                         if sb_success is not None:
+                            if not sb_success and 'No module named' in sb_feedback:
+                                if self._auto_install_from_error(sb_feedback):
+                                    sb_success, sb_feedback = self.sandbox_execute(block, name)
+
                             success = sb_success
                             feedback = sb_feedback
                             self.blocks_result.append(executorResult(block, feedback, success, name))
@@ -127,6 +198,13 @@ class CoderAgent(Agent):
                         self.memory.push('user', feedback)
                         return False, feedback
                 self.memory.push('user', feedback)
+
+        if saved_files:
+            verification = self._verify_saved_files(answer)
+            if verification:
+                pretty_print(verification, color="info")
+                feedback += verification
+
         return True, feedback
 
     def _build_debug_prompt(self, feedback, attempt, max_attempts):
@@ -134,42 +212,48 @@ class CoderAgent(Agent):
         feedback_lower = feedback.lower()
         if 'port' in feedback_lower and ('in use' in feedback_lower or 'already' in feedback_lower):
             hints = (
-                "\nHINT PENTING: Error 'port in use' karena kamu mencoba menjalankan server.\n"
-                "SOLUSI: JANGAN tulis app.run() atau if __name__ == '__main__': app.run(). "
-                "Hapus semua baris yang menjalankan server. Simpan file saja tanpa menjalankannya.\n"
-                "Untuk website, buat sebagai HTML statis lengkap (HTML+CSS+JS dalam satu file).\n"
+                "\n⛔ HINT: Error 'port in use' karena kamu menjalankan server.\n"
+                "SOLUSI: HAPUS app.run() dan semua kode server. Simpan file saja.\n"
+                "Untuk website: buat HTML statis lengkap (HTML+CSS+JS dalam satu file).\n"
             )
         elif 'no module named' in feedback_lower or 'modulenotfounderror' in feedback_lower:
             hints = (
-                "\nHINT: Module tidak tersedia. Jangan install via pip.\n"
-                "SOLUSI: Gunakan hanya library standar Python atau yang sudah tersedia: "
-                "flask, requests, beautifulsoup4, numpy, sqlite3, json, csv, math, random, datetime, os, sys.\n"
-                "Jika butuh library lain, cari alternatif dengan library standar.\n"
+                "\n📦 HINT: Module otomatis diinstall. Jika masih gagal:\n"
+                "SOLUSI: Gunakan library standar Python atau alternatif yang tersedia.\n"
+                "Tersedia: flask, requests, bs4, numpy, sqlite3, json, csv, math, random, datetime, os, sys.\n"
             )
         elif 'tkinter' in feedback_lower or 'display' in feedback_lower or 'no display' in feedback_lower:
             hints = (
-                "\nHINT: Ini lingkungan headless tanpa GUI.\n"
-                "SOLUSI: JANGAN gunakan Tkinter, PyQt, atau library GUI desktop. "
-                "Buat sebagai website HTML statis atau aplikasi terminal.\n"
+                "\n🖥️ HINT: Lingkungan headless tanpa GUI.\n"
+                "SOLUSI: JANGAN gunakan Tkinter/PyQt/GUI. Buat sebagai website HTML statis.\n"
             )
         elif 'address already in use' in feedback_lower:
             hints = (
-                "\nHINT: Port sudah digunakan oleh sistem.\n"
-                "SOLUSI: JANGAN menjalankan server apapun. Buat sebagai file HTML statis.\n"
+                "\n🔌 HINT: Port sudah digunakan.\n"
+                "SOLUSI: JANGAN jalankan server. Buat file HTML statis.\n"
+            )
+        elif 'permission denied' in feedback_lower:
+            hints = (
+                "\n🔒 HINT: Permission denied.\n"
+                "SOLUSI: Pastikan menulis file di direktori kerja, bukan system directories.\n"
+            )
+        elif 'syntax' in feedback_lower:
+            hints = (
+                "\n📝 HINT: Syntax error ditemukan.\n"
+                "SOLUSI: Periksa indentasi, tanda kurung, kutip, dan titik koma.\n"
             )
 
         return (
-            f"KODE SEBELUMNYA GAGAL (percobaan {attempt}/{max_attempts}).\n"
+            f"🔧 AUTONOMOUS DEBUG MODE (percobaan {attempt}/{max_attempts})\n"
             f"Error yang terjadi:\n{feedback}\n\n"
             f"{hints}"
-            f"INSTRUKSI DEBUGGING:\n"
-            f"1. Analisis error message di atas dengan teliti\n"
-            f"2. Identifikasi akar penyebab error\n"
-            f"3. Tulis ulang kode yang SUDAH DIPERBAIKI secara LENGKAP\n"
-            f"4. Jangan hanya memberikan potongan - tulis SELURUH kode yang diperbaiki\n"
-            f"5. Pastikan semua import, dependensi, dan syntax sudah benar\n"
-            f"6. Jika error berulang, coba pendekatan/library yang berbeda\n"
-            f"7. INGAT: JANGAN tulis app.run(), JANGAN gunakan Tkinter, JANGAN install package"
+            f"INSTRUKSI MANDIRI:\n"
+            f"1. BACA error message - identifikasi AKAR masalah\n"
+            f"2. TULIS ULANG kode yang SUDAH DIPERBAIKI secara LENGKAP\n"
+            f"3. Pastikan semua import dan syntax benar\n"
+            f"4. Jika error berulang, GANTI PENDEKATAN sepenuhnya\n"
+            f"5. JANGAN jelaskan, LANGSUNG tulis kode yang diperbaiki\n"
+            f"6. INGAT: TANPA app.run(), TANPA Tkinter, TANPA server start"
         )
 
     async def process(self, prompt, speech_module) -> str:
@@ -185,7 +269,7 @@ class CoderAgent(Agent):
         while attempt < max_attempts and not self.stop:
             self.logger.info(f"Attempt {attempt + 1}/{max_attempts}")
             animate_thinking("Thinking...", color="status")
-            self.status_message = f"Berpikir... (percobaan {attempt + 1}/{max_attempts})"
+            self.status_message = f"🤖 Berpikir... (percobaan {attempt + 1}/{max_attempts})"
             await self.wait_message(speech_module)
             answer, reasoning = await self.llm_request()
             self.last_reasoning = reasoning
@@ -194,16 +278,19 @@ class CoderAgent(Agent):
                 await asyncio.sleep(0)
                 return answer, reasoning
             if "```" not in answer:
-                if no_code_retries < 2 and any(kw in original_prompt.lower() for kw in [
+                if no_code_retries < 3 and any(kw in original_prompt.lower() for kw in [
                     'buatkan', 'buat ', 'create', 'make', 'write', 'build', 'coding',
                     'website', 'aplikasi', 'program', 'script', 'game', 'kalkulator',
                     'deploy', 'full stack', 'fullstack', 'api', 'server', 'debug',
-                    'perbaiki', 'fix', 'error'
+                    'perbaiki', 'fix', 'error', 'todo', 'landing', 'page', 'dashboard',
+                    'form', 'login', 'register', 'portfolio', 'blog', 'toko', 'shop',
+                    'e-commerce', 'chat', 'bot'
                 ]):
                     self.memory.push('user',
-                        'Kamu belum menulis kode. WAJIB tulis kode LENGKAP sekarang dalam blok ```bahasa:namafile.ext```.\n'
+                        'PERINTAH: Kamu BELUM menulis kode. Sebagai AI Autonomous, kamu WAJIB langsung menulis kode LENGKAP sekarang.\n'
+                        'Format: ```bahasa:namafile.ext\n'
                         'Contoh: ```python:app.py atau ```html:index.html\n'
-                        'Tulis SEMUA kode yang dibutuhkan, lengkap dan siap jalan. JANGAN jelaskan, langsung tulis kode.'
+                        'JANGAN jelaskan. JANGAN bertanya. LANGSUNG tulis seluruh kode yang dibutuhkan.'
                     )
                     no_code_retries += 1
                     attempt += 1
@@ -214,7 +301,7 @@ class CoderAgent(Agent):
             no_code_retries = 0
             self.show_answer()
             animate_thinking("Executing code...", color="status")
-            self.status_message = f"Menjalankan kode... (percobaan {attempt + 1}/{max_attempts})"
+            self.status_message = f"⚡ Menjalankan kode... (percobaan {attempt + 1}/{max_attempts})"
             self.logger.info(f"Attempt {attempt + 1}:\n{answer}")
             exec_success, feedback = self.execute_modules_with_sandbox(answer) if self.use_sandbox else self.execute_modules(answer)
             self.logger.info(f"Execution result: {exec_success}")
@@ -222,18 +309,21 @@ class CoderAgent(Agent):
             self.last_answer = answer
             await asyncio.sleep(0)
             if exec_success:
-                self.status_message = "Selesai"
+                self.status_message = "✅ Selesai"
+                verification = self._verify_saved_files(answer)
+                if verification:
+                    self.last_answer = answer + "\n" + verification
                 break
-            pretty_print(f"Execution failure:\n{feedback}", color="failure")
-            pretty_print("Auto-debugging...", color="status")
-            self.status_message = f"Auto-debugging... (percobaan {attempt + 1}/{max_attempts})"
+            pretty_print(f"❌ Execution failure:\n{feedback}", color="failure")
+            pretty_print("🔧 Auto-debugging...", color="status")
+            self.status_message = f"🔧 Auto-debugging... (percobaan {attempt + 1}/{max_attempts})"
             debug_prompt = self._build_debug_prompt(feedback, attempt + 1, max_attempts)
             self.memory.push('user', debug_prompt)
             self.logger.info(f"Debug prompt sent for attempt {attempt + 1}")
             attempt += 1
         self.status_message = "Siap"
         if attempt == max_attempts:
-            return "Maaf, saya sudah mencoba beberapa kali tapi belum berhasil. Silakan berikan detail lebih lanjut agar saya bisa membantu.", reasoning
+            return "Saya sudah mencoba beberapa kali tapi masih ada kendala. Coba berikan detail lebih lanjut agar saya bisa memperbaikinya.", reasoning
         self.last_answer = answer
         return answer, reasoning
 

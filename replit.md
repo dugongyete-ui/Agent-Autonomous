@@ -11,7 +11,7 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
   - **HuggingFace** - Qwen/Qwen2.5-72B-Instruct (gratis)
 - **Agent System**: ML-based router (AdaptiveClassifier + keyword override) selects from 5 agents:
   - CasualAgent (Dzeck) - general conversation
-  - CoderAgent (Coder) - code execution with sandbox safety
+  - CoderAgent (Coder) - Full-Stack Autonomous Developer with sandbox safety
   - FileAgent (File) - file manipulation
   - BrowserAgent (Browser) - web browsing via Selenium/Chromium headless
   - PlannerAgent (Planner) - multi-step task planning
@@ -19,7 +19,10 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - **Memory**: Conversation memory with compression
 - **Language**: LanguageUtility with MarianMT translation models
 - **Browser**: Selenium with headless Chromium
-- **Sandbox**: Safe code execution with pattern blocking, timeout, resource limiting
+- **Sandbox**: Safe code execution with whitelist mode, workspace isolation per session, path restriction
+- **Workspace Manager**: Dynamic multi-project workspace with session isolation, project type detection
+- **Real-time**: WebSocket for live status updates, execution progress, file notifications
+- **Live Preview**: Iframe-based preview for generated websites, file selector, project file viewer
 
 ## Key Files
 - `api.py` - FastAPI server, serves frontend + API endpoints
@@ -55,31 +58,28 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
-- 2026-02-14: MAJOR FIX - Coder prompt ditingkatkan: larang pip install, Tkinter, server run via bash. Fokus HTML statis
-- 2026-02-14: MAJOR FIX - BashInterpreter skip pip/npm install commands otomatis (tidak error lagi)
-- 2026-02-14: MAJOR FIX - Sandbox skip package install commands (return success instead of error)
-- 2026-02-14: MAJOR FIX - add_sys_info_prompt beri konteks lingkungan yang benar ke AI (headless, library tersedia, aturan wajib)
-- 2026-02-14: FIX - code_agent process() tidak lagi force-debug pada bash success
-- 2026-02-14: CRITICAL FIX - work_dir directory auto-creation: api.py, tools.py, BashInterpreter.py, sandbox.py semua memastikan /home/runner/workspace/work dibuat otomatis
-- 2026-02-14: CRITICAL FIX - Chat history: session disimpan sebelum new_chat/clear_history (save_session=True di config.ini)
+- 2026-02-14: FEATURE - Frontend: WebSocket real-time connection (status, progress, file updates)
+- 2026-02-14: FEATURE - Frontend: Live Preview tab dengan iframe untuk preview website yang dibuat AI
+- 2026-02-14: FEATURE - Frontend: Files tab dengan file browser dan code viewer
+- 2026-02-14: FEATURE - Frontend: Quick action buttons (Website Portfolio, Kalkulator Web, To-Do App)
+- 2026-02-14: FEATURE - Frontend: Progress bar real-time saat AI memproses permintaan
+- 2026-02-14: FEATURE - Frontend: WebSocket "Live" indicator di sidebar
+- 2026-02-14: FEATURE - Backend: WebSocket endpoint /ws untuk broadcast status updates
+- 2026-02-14: FEATURE - Backend: /api/preview-files, /api/project-files, /api/file-content endpoints
+- 2026-02-14: FEATURE - Backend: /api/preview/{filename} untuk serve file preview via iframe
+- 2026-02-14: FEATURE - Workspace Manager: Dynamic multi-project, session isolation, project type detection
+- 2026-02-14: FEATURE - Sandbox: Whitelist mode, workspace isolation per session, path restriction
+- 2026-02-14: UPGRADE - CoderAgent: Full-Stack Autonomous Developer mode
+- 2026-02-14: MAJOR FIX - Coder prompt ditingkatkan: larang pip install, Tkinter, server run via bash
+- 2026-02-14: MAJOR FIX - BashInterpreter skip pip/npm install commands otomatis
+- 2026-02-14: MAJOR FIX - Sandbox skip package install commands (return success)
+- 2026-02-14: CRITICAL FIX - work_dir directory auto-creation
+- 2026-02-14: CRITICAL FIX - Chat history: session disimpan sebelum new_chat/clear_history
 - 2026-02-14: CRITICAL FIX - Agent stop flag & blocks_result di-reset saat new_chat/clear_history
-- 2026-02-14: CRITICAL FIX - is_generating flag di-reset di finally block & stop endpoint mencegah stuck state
-- 2026-02-14: FIX - Memory push() crash prevention (IndexError saat memory kosong)
-- 2026-02-14: FIX - Memory summarize() .replace() result ditangkap
-- 2026-02-14: FIX - Agent add_tool() type check diperbaiki (is not Callable -> callable() + hasattr)
-- 2026-02-14: FIX - Agent return type annotations diperbaiki (remove_reasoning_text, extract_reasoning_text)
-- 2026-02-14: FIX - config.ini provider_server_address diperbaiki sesuai provider groq
-- 2026-02-14: UPGRADE - Auto-debugging diperkuat: debug prompt terstruktur dengan analisis error detail
-- 2026-02-14: UPGRADE - Status message real-time dalam bahasa Indonesia (Berpikir, Menjalankan kode, Auto-debugging)
-- 2026-02-14: UPGRADE - No-code retry limit (max 2x) mencegah infinite loop jika AI tidak menulis kode
-- 2026-02-14: UPGRADE - Keyword detection diperluas (30+ kata kunci koding ID/EN)
-- 2026-02-14: FEATURE - Download ZIP: /api/download-zip endpoint, tombol "Unduh .ZIP" di sidebar
-- 2026-02-14: FEATURE - CSS styles untuk download button (hijau gradient)
-- 2026-02-14: FIX - HuggingFace 402 error handling dengan retry dan model fallback
+- 2026-02-14: CRITICAL FIX - is_generating flag di-reset di finally block
+- 2026-02-14: FEATURE - Download ZIP: /api/download-zip endpoint, tombol "Unduh .ZIP"
 - 2026-02-14: MAJOR FIX - Router keyword override: tugas koding langsung ke code agent
-- 2026-02-14: MAJOR FIX - Coder agent prompt diperkuat: instruksi eksplisit tulis kode lengkap
 - 2026-02-14: CLEANUP - Hapus semua provider kecuali Groq dan HuggingFace
-- 2026-02-14: CLEANUP - Hapus celery, together, ollama dari dependencies
 
 ## Running
 - Workflow "Start application" runs `python api.py`

@@ -97,6 +97,19 @@ class CoderAgent(Agent):
                     tool.save_block(blocks, save_path)
         return True, feedback
 
+    def _build_debug_prompt(self, feedback, attempt, max_attempts):
+        return (
+            f"KODE SEBELUMNYA GAGAL (percobaan {attempt}/{max_attempts}).\n"
+            f"Error yang terjadi:\n{feedback}\n\n"
+            f"INSTRUKSI DEBUGGING:\n"
+            f"1. Analisis error message di atas dengan teliti\n"
+            f"2. Identifikasi akar penyebab error\n"
+            f"3. Tulis ulang kode yang SUDAH DIPERBAIKI secara LENGKAP\n"
+            f"4. Jangan hanya memberikan potongan - tulis SELURUH kode yang diperbaiki\n"
+            f"5. Pastikan semua import, dependensi, dan syntax sudah benar\n"
+            f"6. Jika error berulang, coba pendekatan/library yang berbeda"
+        )
+
     async def process(self, prompt, speech_module) -> str:
         answer = ""
         attempt = 0
@@ -104,10 +117,13 @@ class CoderAgent(Agent):
         prompt = self.add_sys_info_prompt(prompt)
         self.memory.push('user', prompt)
         clarify_trigger = "REQUEST_CLARIFICATION"
+        original_prompt = prompt
+        no_code_retries = 0
 
         while attempt < max_attempts and not self.stop:
-            print("Stopped?", self.stop)
+            self.logger.info(f"Attempt {attempt + 1}/{max_attempts}")
             animate_thinking("Thinking...", color="status")
+            self.status_message = f"Berpikir... (percobaan {attempt + 1}/{max_attempts})"
             await self.wait_message(speech_module)
             answer, reasoning = await self.llm_request()
             self.last_reasoning = reasoning
@@ -115,17 +131,28 @@ class CoderAgent(Agent):
                 self.last_answer = answer
                 await asyncio.sleep(0)
                 return answer, reasoning
-            if not "```" in answer:
-                if any(kw in prompt.lower() for kw in ['buatkan', 'buat ', 'create', 'make', 'write', 'build', 'coding']):
-                    self.memory.push('user', 'Kamu belum menulis kode. Tulis kode LENGKAP sekarang dalam blok ``` yang sesuai. Jangan jelaskan, langsung tulis kode.')
+            if "```" not in answer:
+                if no_code_retries < 2 and any(kw in original_prompt.lower() for kw in [
+                    'buatkan', 'buat ', 'create', 'make', 'write', 'build', 'coding',
+                    'website', 'aplikasi', 'program', 'script', 'game', 'kalkulator',
+                    'deploy', 'full stack', 'fullstack', 'api', 'server', 'debug',
+                    'perbaiki', 'fix', 'error'
+                ]):
+                    self.memory.push('user',
+                        'Kamu belum menulis kode. WAJIB tulis kode LENGKAP sekarang dalam blok ```bahasa:namafile.ext```.\n'
+                        'Contoh: ```python:app.py atau ```html:index.html\n'
+                        'Tulis SEMUA kode yang dibutuhkan, lengkap dan siap jalan. JANGAN jelaskan, langsung tulis kode.'
+                    )
+                    no_code_retries += 1
                     attempt += 1
                     continue
                 self.last_answer = answer
                 await asyncio.sleep(0)
                 break
+            no_code_retries = 0
             self.show_answer()
             animate_thinking("Executing code...", color="status")
-            self.status_message = "Executing code..."
+            self.status_message = f"Menjalankan kode... (percobaan {attempt + 1}/{max_attempts})"
             self.logger.info(f"Attempt {attempt + 1}:\n{answer}")
             exec_success, feedback = self.execute_modules_with_sandbox(answer) if self.use_sandbox else self.execute_modules(answer)
             self.logger.info(f"Execution result: {exec_success}")
@@ -133,14 +160,18 @@ class CoderAgent(Agent):
             self.last_answer = answer
             await asyncio.sleep(0)
             if exec_success and self.get_last_tool_type() != "bash":
+                self.status_message = "Selesai"
                 break
             pretty_print(f"Execution failure:\n{feedback}", color="failure")
-            pretty_print("Correcting code...", color="status")
-            self.status_message = "Correcting code..."
+            pretty_print("Auto-debugging...", color="status")
+            self.status_message = f"Auto-debugging... (percobaan {attempt + 1}/{max_attempts})"
+            debug_prompt = self._build_debug_prompt(feedback, attempt + 1, max_attempts)
+            self.memory.push('user', debug_prompt)
+            self.logger.info(f"Debug prompt sent for attempt {attempt + 1}")
             attempt += 1
-        self.status_message = "Ready"
+        self.status_message = "Siap"
         if attempt == max_attempts:
-            return "I'm sorry, I couldn't find a solution to your problem. How would you like me to proceed ?", reasoning
+            return "Maaf, saya sudah mencoba beberapa kali tapi belum berhasil. Silakan berikan detail lebih lanjut agar saya bisa membantu.", reasoning
         self.last_answer = answer
         return answer, reasoning
 

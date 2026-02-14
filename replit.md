@@ -55,6 +55,15 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: CRITICAL FIX - work_dir directory auto-creation: api.py, tools.py, BashInterpreter.py, sandbox.py semua memastikan /home/runner/workspace/work dibuat otomatis
+- 2026-02-14: CRITICAL FIX - Chat history: session disimpan sebelum new_chat/clear_history (save_session=True di config.ini)
+- 2026-02-14: CRITICAL FIX - Agent stop flag & blocks_result di-reset saat new_chat/clear_history
+- 2026-02-14: CRITICAL FIX - is_generating flag di-reset di finally block & stop endpoint mencegah stuck state
+- 2026-02-14: FIX - Memory push() crash prevention (IndexError saat memory kosong)
+- 2026-02-14: FIX - Memory summarize() .replace() result ditangkap
+- 2026-02-14: FIX - Agent add_tool() type check diperbaiki (is not Callable -> callable() + hasattr)
+- 2026-02-14: FIX - Agent return type annotations diperbaiki (remove_reasoning_text, extract_reasoning_text)
+- 2026-02-14: FIX - config.ini provider_server_address diperbaiki sesuai provider groq
 - 2026-02-14: UPGRADE - Auto-debugging diperkuat: debug prompt terstruktur dengan analisis error detail
 - 2026-02-14: UPGRADE - Status message real-time dalam bahasa Indonesia (Berpikir, Menjalankan kode, Auto-debugging)
 - 2026-02-14: UPGRADE - No-code retry limit (max 2x) mencegah infinite loop jika AI tidak menulis kode

@@ -7,6 +7,7 @@ from sources.agents.code_agent import CoderAgent
 from sources.agents.file_agent import FileAgent
 from sources.agents.browser_agent import BrowserAgent
 from sources.agents.casual_agent import CasualAgent
+from sources.orchestrator import AutonomousOrchestrator
 try:
     from sources.text_to_speech import Speech
 except ImportError:
@@ -16,7 +17,7 @@ from sources.logger import Logger
 from sources.memory import Memory
 
 class PlannerAgent(Agent):
-    def __init__(self, name, prompt_path, provider, verbose=False, browser=None):
+    def __init__(self, name, prompt_path, provider, verbose=False, browser=None, ws_manager=None):
         """
         The planner agent is a special agent that divides and conquers the task.
         """
@@ -41,6 +42,11 @@ class PlannerAgent(Agent):
         self.logger = Logger("planner_agent.log")
         self.current_plan = []
         self.plan_progress = {}
+        self.orchestrator = AutonomousOrchestrator(
+            agents=self.agents,
+            provider=provider,
+            ws_manager=ws_manager
+        )
     
     def sanitize_json_text(self, text: str) -> str:
         """
@@ -491,17 +497,9 @@ Jangan bertanya. Langsung buat rencana sekarang."""
 
     async def process(self, goal: str, speech_module) -> Tuple[str, str]:
         """
-        Process the goal by dividing it into tasks and assigning them to agents.
-        Args:
-            goal (str): The goal to be achieved (user prompt).
-            speech_module: The speech module for text-to-speech.
-        Returns:
-            Tuple[str, str]: The result of the agent process and empty reasoning string.
+        Process the goal using the autonomous orchestrator loop.
+        Plan -> Execute -> Observe -> Reflect cycle for full autonomy.
         """
-        agents_tasks = []
-        required_infos = None
-        agents_work_result = dict()
-
         self.status_message = "Membuat rencana..."
         self.last_answer = "Sedang menganalisis permintaan dan membuat rencana..."
         agents_tasks = await self.make_plan(goal)
@@ -512,6 +510,39 @@ Jangan bertanya. Langsung buat rencana sekarang."""
         plan_text = self.format_plan_text(agents_tasks)
         self.current_plan = agents_tasks
         self.plan_progress = {}
+
+        self.logger.info(f"Starting autonomous orchestrator for: {goal}")
+        self.status_message = "Mode otonom aktif..."
+
+        try:
+            result = await self.orchestrator.run_loop(goal, agents_tasks, speech_module)
+            self.last_answer = result
+
+            if self.orchestrator.plan:
+                for step in self.orchestrator.plan.steps:
+                    self.plan_progress[str(step.id)] = {
+                        "success": step.status == "completed",
+                        "answer": step.result or step.error
+                    }
+                    if hasattr(self.agents.get(step.agent_type.lower(), None), 'blocks_result'):
+                        agent = self.agents.get(step.agent_type.lower())
+                        if agent and agent.blocks_result:
+                            self.blocks_result = agent.blocks_result
+
+            self.status_message = "Selesai"
+            return result, "Autonomous orchestrator completed"
+        except Exception as e:
+            self.logger.error(f"Orchestrator error: {str(e)}")
+            self.status_message = f"Error: {str(e)[:100]}"
+
+            pretty_print(f"Orchestrator error, falling back to sequential: {str(e)}", color="warning")
+            return await self._fallback_sequential_process(goal, agents_tasks, speech_module)
+
+    async def _fallback_sequential_process(self, goal: str, agents_tasks: list, speech_module) -> Tuple[str, str]:
+        """Fallback to sequential execution if orchestrator fails."""
+        required_infos = None
+        agents_work_result = dict()
+        plan_text = self.format_plan_text(agents_tasks)
 
         i = 0
         steps = len(agents_tasks)
@@ -526,9 +557,6 @@ Jangan bertanya. Langsung buat rencana sekarang."""
             progress_lines.append(f"\n**Saat ini:** [{task['agent'].upper()}] {task['task']}")
             self.last_answer = "\n".join(progress_lines)
 
-            pretty_print(f"Assigned agent {task['agent']} to {task_name}", color="info")
-            if speech_module: speech_module.speak(f"I will {task_name}. I assigned the {task['agent']} agent to the task.")
-
             if agents_work_result is not None:
                 required_infos = self.get_work_result_agent(task.get('need', []), agents_work_result)
             try:
@@ -537,7 +565,6 @@ Jangan bertanya. Langsung buat rencana sekarang."""
                 raise e
 
             self.plan_progress[task['id']] = {"success": success, "answer": answer}
-
             if self.stop:
                 pretty_print(f"Requested stop.", color="failure")
             agents_work_result[task['id']] = answer
@@ -550,5 +577,4 @@ Jangan bertanya. Langsung buat rencana sekarang."""
         if answer:
             final_lines.append(f"\n\n**Hasil:**\n{answer}")
         self.last_answer = "\n".join(final_lines)
-
         return self.last_answer, ""

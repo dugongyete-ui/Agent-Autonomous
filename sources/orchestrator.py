@@ -57,13 +57,25 @@ class ExecutionPlan:
     def get_progress_text(self) -> str:
         lines = [f"**Rencana: {self.goal}**\n"]
         for step in self.steps:
-            icon = {"pending": "⏳", "completed": "✅", "failed": "❌", "running": "🔄"}.get(step.status, "⏳")
+            icon = {"pending": "...", "completed": "[OK]", "failed": "[X]", "running": "[~]"}.get(step.status, "...")
             lines.append(f"{icon} Langkah {step.id}: [{step.agent_type.upper()}] {step.description} ({step.status})")
         return "\n".join(lines)
 
+    def get_progress_data(self) -> List[Dict]:
+        return [
+            {
+                "id": step.id,
+                "description": step.description,
+                "agent_type": step.agent_type,
+                "status": step.status,
+                "attempts": step.attempts,
+            }
+            for step in self.steps
+        ]
+
 
 class AutonomousOrchestrator:
-    def __init__(self, agents: dict, provider):
+    def __init__(self, agents: dict, provider, ws_manager=None):
         self.agents = agents
         self.provider = provider
         self.logger = Logger("orchestrator.log")
@@ -71,6 +83,21 @@ class AutonomousOrchestrator:
         self.memory: List[Dict] = []
         self.status_message = "Idle"
         self.last_answer = ""
+        self.ws_manager = ws_manager
+
+    async def _notify_status(self, agent_name: str, status: str, progress: float = 0.0, details: str = ""):
+        if self.ws_manager:
+            try:
+                await self.ws_manager.send_status(agent_name, status, progress, details)
+            except Exception:
+                pass
+
+    async def _notify_plan(self, current_step: int = 0):
+        if self.ws_manager and self.plan:
+            try:
+                await self.ws_manager.send_plan_update(self.plan.get_progress_data(), current_step)
+            except Exception:
+                pass
 
     def create_plan_from_tasks(self, goal: str, agent_tasks: list) -> ExecutionPlan:
         plan = ExecutionPlan(goal=goal)
@@ -99,6 +126,9 @@ class AutonomousOrchestrator:
 
         self.logger.info(f"Executing step {step.id}: {step.description} with agent {agent_key}")
         self.status_message = f"Langkah {step.id}: {step.description}"
+
+        await self._notify_status("orchestrator", f"Langkah {step.id}/{len(self.plan.steps)}", 
+                                   step.id / len(self.plan.steps), step.description[:100])
 
         try:
             answer, reasoning = await agent.process(prompt, None)
@@ -147,8 +177,11 @@ class AutonomousOrchestrator:
         work_results = {}
         final_answer = ""
 
-        pretty_print(f"\n🚀 AUTONOMOUS MODE: {len(plan.steps)} langkah", color="status")
+        pretty_print(f"\n>> AUTONOMOUS MODE: {len(plan.steps)} langkah", color="status")
         pretty_print(plan.get_progress_text(), color="info")
+
+        await self._notify_status("orchestrator", "Memulai eksekusi otonom", 0.0, f"{len(plan.steps)} langkah")
+        await self._notify_plan(0)
 
         max_iterations = len(plan.steps) * 3
         iteration = 0
@@ -159,8 +192,9 @@ class AutonomousOrchestrator:
                 break
 
             iteration += 1
-            pretty_print(f"\n🔄 Langkah {step.id}/{len(plan.steps)}: {step.description}", color="status")
+            pretty_print(f"\n>> Langkah {step.id}/{len(plan.steps)}: {step.description}", color="status")
             self.last_answer = plan.get_progress_text()
+            await self._notify_plan(step.id)
 
             required_infos = {}
             for prev_step in plan.steps:
@@ -170,7 +204,7 @@ class AutonomousOrchestrator:
             result, success = await self.execute_step(step, required_infos if required_infos else None)
 
             reflection = self.reflect(step, result, success)
-            pretty_print(f"📝 {reflection}", color="info" if success else "warning")
+            pretty_print(f">> {reflection}", color="info" if success else "warning")
 
             if not success and step.status == "failed":
                 self.revise_plan(step)
@@ -180,10 +214,13 @@ class AutonomousOrchestrator:
                 final_answer = result
 
             self.last_answer = plan.get_progress_text()
+            await self._notify_plan(step.id)
 
         completed = sum(1 for s in plan.steps if s.status == "completed")
         total = len(plan.steps)
-        pretty_print(f"\n✅ Selesai: {completed}/{total} langkah berhasil", color="success" if completed == total else "warning")
+        pretty_print(f"\n>> Selesai: {completed}/{total} langkah berhasil", color="success" if completed == total else "warning")
+
+        await self._notify_status("orchestrator", f"Selesai: {completed}/{total}", 1.0)
 
         summary_lines = [plan.get_progress_text(), "\n---\n"]
         if final_answer:

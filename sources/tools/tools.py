@@ -71,6 +71,9 @@ class Tools():
             workdir_path = self.safe_get_work_dir_path()
         else:
             workdir_path = default_path
+        if workdir_path and not os.path.exists(workdir_path):
+            os.makedirs(workdir_path, exist_ok=True)
+            self.logger.info(f"Created work directory: {workdir_path}")
         return workdir_path
 
     @abstractmethod

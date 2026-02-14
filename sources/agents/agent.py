@@ -89,9 +89,9 @@ class Agent():
     def get_blocks_result(self) -> list:
         return self.blocks_result
 
-    def add_tool(self, name: str, tool: Callable) -> None:
-        if tool is not Callable:
-            raise TypeError("Tool must be a callable object (a method)")
+    def add_tool(self, name: str, tool) -> None:
+        if not callable(tool) and not hasattr(tool, 'execute'):
+            raise TypeError("Tool must be a callable object or have an execute method")
         self.tools[name] = tool
     
     def get_tools_name(self) -> list:
@@ -135,7 +135,7 @@ class Agent():
         """
         pass
 
-    def remove_reasoning_text(self, text: str) -> None:
+    def remove_reasoning_text(self, text: str) -> str:
         """
         Remove the reasoning block of reasoning model like deepseek.
         """
@@ -145,7 +145,7 @@ class Agent():
             return text
         return text[end_idx+8:]
     
-    def extract_reasoning_text(self, text: str) -> None:
+    def extract_reasoning_text(self, text: str) -> str:
         """
         Extract the reasoning block of a reasoning model like deepseek.
         """

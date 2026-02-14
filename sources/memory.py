@@ -156,7 +156,7 @@ class Memory():
                 self.logger.info(f"Compressing memory: Content {len(content)} > {ideal_ctx} model context.")
                 self.compress()
         curr_idx = len(self.memory)
-        if self.memory[curr_idx-1]['content'] == content:
+        if curr_idx > 0 and self.memory[curr_idx-1]['content'] == content:
             pretty_print("Warning: same message have been pushed twice to memory", color="error")
         time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if config["MAIN"]["provider_name"] == "openrouter":
@@ -204,7 +204,7 @@ class Memory():
             early_stopping=True
         )
         summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-        summary.replace('summary:', '')
+        summary = summary.replace('summary:', '')
         self.logger.info(f"Memory summarized from len {len(text)} to {len(summary)}.")
         self.logger.info(f"Summarized text:\n{summary}")
         return summary

@@ -18,7 +18,51 @@ function App() {
   const [expandedReasoning, setExpandedReasoning] = useState(new Set());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [modelConfig, setModelConfig] = useState(null);
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [isChangingModel, setIsChangingModel] = useState(false);
+  const [showModelSelector, setShowModelSelector] = useState(false);
   const messagesEndRef = useRef(null);
+
+  const fetchModelConfig = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/config/models`);
+      setModelConfig(res.data);
+      setSelectedProvider(res.data.current_provider);
+      setSelectedModel(res.data.current_model);
+    } catch (err) {
+      console.error("Error fetching model config:", err);
+    }
+  }, []);
+
+  const handleModelChange = async () => {
+    if (!selectedProvider || !selectedModel) return;
+    if (modelConfig && selectedProvider === modelConfig.current_provider && selectedModel === modelConfig.current_model) {
+      setShowModelSelector(false);
+      return;
+    }
+    setIsChangingModel(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/config/update`, {
+        provider_name: selectedProvider,
+        model: selectedModel
+      });
+      await fetchModelConfig();
+      setShowModelSelector(false);
+      setMessages(prev => [...prev, {
+        type: "agent",
+        content: `Model berhasil diganti ke **${selectedProvider}** - \`${selectedModel}\``,
+        agentName: "System",
+        status: "Model diperbarui"
+      }]);
+    } catch (err) {
+      console.error("Error updating model:", err);
+      setError("Gagal mengganti model. Pastikan API key tersedia.");
+    } finally {
+      setIsChangingModel(false);
+    }
+  };
 
   const fetchLatestAnswer = useCallback(async () => {
     try {
@@ -52,9 +96,10 @@ function App() {
 
   useEffect(() => {
     checkHealth();
+    fetchModelConfig();
     const healthInterval = setInterval(checkHealth, 10000);
     return () => clearInterval(healthInterval);
-  }, []);
+  }, [fetchModelConfig]);
 
   useEffect(() => {
     const pollInterval = setInterval(() => {
@@ -225,6 +270,8 @@ function App() {
     },
   ];
 
+  const currentProviderModels = modelConfig?.providers?.[selectedProvider]?.models || [];
+
   return (
     <div className="app-container">
       <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
@@ -261,6 +308,68 @@ function App() {
             </button>
           ))}
         </nav>
+
+        {!sidebarCollapsed && (
+          <div className="model-selector-section">
+            <button
+              className="model-selector-toggle"
+              onClick={() => setShowModelSelector(!showModelSelector)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Model AI</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginLeft: 'auto', transform: showModelSelector ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
+            {showModelSelector && modelConfig && (
+              <div className="model-selector-panel">
+                <div className="model-current-info">
+                  <span className="model-current-label">Aktif:</span>
+                  <span className="model-current-value">{modelConfig.current_model}</span>
+                </div>
+
+                <label className="model-field-label">Provider</label>
+                <select
+                  className="model-select"
+                  value={selectedProvider}
+                  onChange={(e) => {
+                    const newProvider = e.target.value;
+                    setSelectedProvider(newProvider);
+                    const models = modelConfig.providers[newProvider]?.models || [];
+                    if (models.length > 0) setSelectedModel(models[0]);
+                  }}
+                >
+                  {Object.entries(modelConfig.providers).map(([key, val]) => (
+                    <option key={key} value={key}>{val.name}</option>
+                  ))}
+                </select>
+
+                <label className="model-field-label">Model</label>
+                <select
+                  className="model-select"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                >
+                  {currentProviderModels.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+
+                <button
+                  className="model-apply-btn"
+                  onClick={handleModelChange}
+                  disabled={isChangingModel}
+                >
+                  {isChangingModel ? "Mengganti..." : "Terapkan"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="sidebar-actions">
           <button className="sidebar-action-btn new-chat-btn" onClick={handleNewChat} title="Chat Baru">
@@ -321,6 +430,53 @@ function App() {
                 </button>
               ))}
               <hr className="mobile-divider" />
+
+              <div className="mobile-model-section">
+                <div className="mobile-model-header">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  <span>Model AI</span>
+                </div>
+                {modelConfig && (
+                  <div className="mobile-model-controls">
+                    <div className="model-current-info">
+                      <span className="model-current-label">Aktif:</span>
+                      <span className="model-current-value">{modelConfig.current_model}</span>
+                    </div>
+                    <select
+                      className="model-select"
+                      value={selectedProvider}
+                      onChange={(e) => {
+                        const newProvider = e.target.value;
+                        setSelectedProvider(newProvider);
+                        const models = modelConfig.providers[newProvider]?.models || [];
+                        if (models.length > 0) setSelectedModel(models[0]);
+                      }}
+                    >
+                      {Object.entries(modelConfig.providers).map(([key, val]) => (
+                        <option key={key} value={key}>{val.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="model-select"
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                    >
+                      {currentProviderModels.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="model-apply-btn"
+                      onClick={() => { handleModelChange(); setMobileMenuOpen(false); }}
+                      disabled={isChangingModel}
+                    >
+                      {isChangingModel ? "Mengganti..." : "Terapkan"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <hr className="mobile-divider" />
               <button className="mobile-nav-item" onClick={() => { handleNewChat(); setMobileMenuOpen(false); }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span>Chat Baru</span>
@@ -339,7 +495,17 @@ function App() {
           <div className="chat-panel">
             <div className="panel-header">
               <h2>Chat AI Agent</h2>
-              <span className="panel-badge">{status}</span>
+              <div className="panel-header-right">
+                {modelConfig && (
+                  <span className="model-badge" title={`${modelConfig.current_provider}: ${modelConfig.current_model}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    {modelConfig.current_model.length > 25
+                      ? modelConfig.current_model.substring(0, 25) + "..."
+                      : modelConfig.current_model}
+                  </span>
+                )}
+                <span className="panel-badge">{status}</span>
+              </div>
             </div>
             <div className="messages-container">
               {messages.length === 0 ? (
@@ -351,6 +517,9 @@ function App() {
                   </div>
                   <h3>Selamat Datang di Agent Dzeck AI</h3>
                   <p>AI Agent full-stack siap membantu Anda. Ketik pesan di bawah untuk mulai!</p>
+                  {modelConfig && (
+                    <p className="empty-hint">Model aktif: {modelConfig.providers[modelConfig.current_provider]?.name} - {modelConfig.current_model}</p>
+                  )}
                 </div>
               ) : (
                 messages.map((msg, index) => (

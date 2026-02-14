@@ -648,6 +648,12 @@ if os.path.isdir(FRONTEND_BUILD_DIR):
         return FileResponse(os.path.join(FRONTEND_BUILD_DIR, "index.html"))
 
 if __name__ == "__main__":
+    try:
+        import install_deps
+        install_deps.install_requirements()
+    except Exception as e:
+        print(f"[Agent Dzeck AI] Auto-install deps skipped: {e}")
+
     if is_running_in_docker():
         print("[Agent Dzeck AI] Starting in Docker container...")
     else:

@@ -210,6 +210,24 @@ class SafeExecutor:
                 return False, "Path traversal beyond workspace detected"
         return True, ""
 
+    def _is_server_code(self, code: str) -> bool:
+        if not code:
+            return False
+        server_indicators = [
+            r'from\s+flask\s+import',
+            r'from\s+fastapi\s+import',
+            r'import\s+flask',
+            r'import\s+fastapi',
+            r'app\s*=\s*Flask\s*\(',
+            r'app\s*=\s*FastAPI\s*\(',
+            r'app\.run\s*\(',
+            r'uvicorn\.run\s*\(',
+            r'@app\.route\s*\(',
+            r'@app\.(get|post|put|delete|patch)\s*\(',
+        ]
+        matches = sum(1 for p in server_indicators if re.search(p, code))
+        return matches >= 2
+
     def _strip_server_start(self, code: str, language: str) -> str:
         if language != 'python':
             return code
@@ -238,6 +256,35 @@ class SafeExecutor:
                     skip_block = False
             cleaned.append(line)
         return '\n'.join(cleaned)
+
+    def _try_auto_install(self, error_text: str) -> bool:
+        module_match = re.search(r"No module named ['\"]([^'\"]+)['\"]", error_text)
+        if not module_match:
+            return False
+        module_name = module_match.group(1).split('.')[0]
+        pkg_map = {
+            'bs4': 'beautifulsoup4',
+            'cv2': 'opencv-python',
+            'PIL': 'Pillow',
+            'sklearn': 'scikit-learn',
+            'yaml': 'pyyaml',
+            'dotenv': 'python-dotenv',
+            'gi': 'PyGObject',
+        }
+        pkg_name = pkg_map.get(module_name, module_name)
+        self.logger.info(f"Auto-installing missing module: {pkg_name}")
+        try:
+            result = subprocess.run(
+                ['pip', 'install', '--quiet', pkg_name],
+                capture_output=True, text=True, timeout=60
+            )
+            if result.returncode == 0:
+                self.logger.info(f"Successfully installed {pkg_name}")
+                return True
+            self.logger.warning(f"Failed to install {pkg_name}: {result.stderr}")
+        except Exception as e:
+            self.logger.warning(f"Auto-install error: {e}")
+        return False
 
     def validate_code(self, code: str, language: str) -> tuple:
         path_safe, path_reason = self._check_path_safety(code)
@@ -268,6 +315,16 @@ class SafeExecutor:
         return self.validate_code(command, 'bash')
 
     def _execute_code(self, code: str, language: str) -> SandboxResult:
+        if language == 'python' and self._is_server_code(code):
+            self.logger.info("Server code detected - saving file only, skipping execution")
+            return SandboxResult(
+                success=True,
+                output="[server code] File backend berhasil disimpan. Server tidak dijalankan di sandbox karena port sudah digunakan. File siap digunakan.",
+                errors="",
+                execution_time=0.0,
+                language=language
+            )
+
         code = self._strip_server_start(code, language)
 
         is_safe, reason = self.validate_code(code, language)
@@ -290,6 +347,19 @@ class SafeExecutor:
         if language == 'bash':
             return self._execute_shell(code)
 
+        max_retries = 2
+        for attempt in range(max_retries):
+            result = self._run_code_subprocess(code, language, config)
+            if result.success:
+                return result
+            if language == 'python' and 'No module named' in result.errors and attempt < max_retries - 1:
+                if self._try_auto_install(result.errors):
+                    self.logger.info("Module installed, retrying execution...")
+                    continue
+            return result
+        return result
+
+    def _run_code_subprocess(self, code: str, language: str, config: dict) -> SandboxResult:
         with tempfile.NamedTemporaryFile(mode='w', suffix=config['extension'],
                                           dir=self.work_dir, delete=False) as f:
             f.write(code)

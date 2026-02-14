@@ -9,6 +9,7 @@ from sources.tools.PyInterpreter import PyInterpreter
 from sources.tools.BashInterpreter import BashInterpreter
 from sources.tools.JavaInterpreter import JavaInterpreter
 from sources.tools.fileFinder import FileFinder
+from sources.tools.SaveTool import HTMLSaveTool, CSSSaveTool, JSSaveTool, TypeScriptSaveTool, SQLSaveTool
 from sources.logger import Logger
 from sources.memory import Memory
 from sources.sandbox import Sandbox
@@ -25,6 +26,11 @@ class CoderAgent(Agent):
             "c": CInterpreter(),
             "go": GoInterpreter(),
             "java": JavaInterpreter(),
+            "html": HTMLSaveTool(),
+            "css": CSSSaveTool(),
+            "javascript": JSSaveTool(),
+            "typescript": TypeScriptSaveTool(),
+            "sql": SQLSaveTool(),
             "file_finder": FileFinder()
         }
         self.work_dir = self.tools["file_finder"].get_work_dir()
@@ -73,6 +79,9 @@ class CoderAgent(Agent):
         feedback = self.sandbox.format_result(result)
         return result.success, feedback
 
+    def _is_save_only_language(self, name: str) -> bool:
+        return name in ('c', 'go', 'java', 'html', 'css', 'javascript', 'typescript', 'sql')
+
     def execute_modules_with_sandbox(self, answer: str):
         feedback = ""
         success = True
@@ -85,6 +94,16 @@ class CoderAgent(Agent):
             blocks, save_path = tool.load_exec_block(answer)
 
             if blocks is not None:
+                if save_path is not None:
+                    tool.save_block(blocks, save_path)
+                    pretty_print(f"File saved: {save_path}", color="status")
+
+                if save_path is not None and self._is_save_only_language(name):
+                    feedback = f"[success] File {save_path} berhasil disimpan."
+                    self.blocks_result.append(executorResult(blocks[0] if blocks else "", feedback, True, name))
+                    self.memory.push('user', feedback)
+                    continue
+
                 pretty_print(f"Executing {len(blocks)} {name} blocks (sandbox)...", color="status")
                 for block in blocks:
                     self.show_block(block)
@@ -108,21 +127,49 @@ class CoderAgent(Agent):
                         self.memory.push('user', feedback)
                         return False, feedback
                 self.memory.push('user', feedback)
-                if save_path is not None:
-                    tool.save_block(blocks, save_path)
         return True, feedback
 
     def _build_debug_prompt(self, feedback, attempt, max_attempts):
+        hints = ""
+        feedback_lower = feedback.lower()
+        if 'port' in feedback_lower and ('in use' in feedback_lower or 'already' in feedback_lower):
+            hints = (
+                "\nHINT PENTING: Error 'port in use' karena kamu mencoba menjalankan server.\n"
+                "SOLUSI: JANGAN tulis app.run() atau if __name__ == '__main__': app.run(). "
+                "Hapus semua baris yang menjalankan server. Simpan file saja tanpa menjalankannya.\n"
+                "Untuk website, buat sebagai HTML statis lengkap (HTML+CSS+JS dalam satu file).\n"
+            )
+        elif 'no module named' in feedback_lower or 'modulenotfounderror' in feedback_lower:
+            hints = (
+                "\nHINT: Module tidak tersedia. Jangan install via pip.\n"
+                "SOLUSI: Gunakan hanya library standar Python atau yang sudah tersedia: "
+                "flask, requests, beautifulsoup4, numpy, sqlite3, json, csv, math, random, datetime, os, sys.\n"
+                "Jika butuh library lain, cari alternatif dengan library standar.\n"
+            )
+        elif 'tkinter' in feedback_lower or 'display' in feedback_lower or 'no display' in feedback_lower:
+            hints = (
+                "\nHINT: Ini lingkungan headless tanpa GUI.\n"
+                "SOLUSI: JANGAN gunakan Tkinter, PyQt, atau library GUI desktop. "
+                "Buat sebagai website HTML statis atau aplikasi terminal.\n"
+            )
+        elif 'address already in use' in feedback_lower:
+            hints = (
+                "\nHINT: Port sudah digunakan oleh sistem.\n"
+                "SOLUSI: JANGAN menjalankan server apapun. Buat sebagai file HTML statis.\n"
+            )
+
         return (
             f"KODE SEBELUMNYA GAGAL (percobaan {attempt}/{max_attempts}).\n"
             f"Error yang terjadi:\n{feedback}\n\n"
+            f"{hints}"
             f"INSTRUKSI DEBUGGING:\n"
             f"1. Analisis error message di atas dengan teliti\n"
             f"2. Identifikasi akar penyebab error\n"
             f"3. Tulis ulang kode yang SUDAH DIPERBAIKI secara LENGKAP\n"
             f"4. Jangan hanya memberikan potongan - tulis SELURUH kode yang diperbaiki\n"
             f"5. Pastikan semua import, dependensi, dan syntax sudah benar\n"
-            f"6. Jika error berulang, coba pendekatan/library yang berbeda"
+            f"6. Jika error berulang, coba pendekatan/library yang berbeda\n"
+            f"7. INGAT: JANGAN tulis app.run(), JANGAN gunakan Tkinter, JANGAN install package"
         )
 
     async def process(self, prompt, speech_module) -> str:

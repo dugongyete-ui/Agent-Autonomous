@@ -58,32 +58,20 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: CRITICAL FIX - Sandbox: auto-strip server start code (app.run(), uvicorn.run(), if __name__) sebelum eksekusi
+- 2026-02-14: CRITICAL FIX - Port 5000 conflict resolved: sandbox mencegah kode bind ke port 5000
+- 2026-02-14: FEATURE - Auto-install dependencies script (install_deps.py) terintegrasi di startup
+- 2026-02-14: UPGRADE - Coder prompt diperkuat: larangan eksplisit app.run(), port 5000, dan socket server
+- 2026-02-14: UPGRADE - Jarvis coder prompt juga diupdate dengan aturan yang sama
 - 2026-02-14: FIX - Renamed all AgenticSeek references to Agent-DzeckAi
 - 2026-02-14: FIX - Model selector now visible in chat header (clickable badge)
-- 2026-02-14: FIX - Removed incompatible microsoft/DialoGPT-medium from model list
 - 2026-02-14: FIX - Default model changed to Qwen/Qwen2.5-72B-Instruct
-- 2026-02-14: FIX - setup_dependencies.sh now includes frontend rebuild step
-- 2026-02-14: FIX - Installed all missing Python dependencies
-- 2026-02-14: FEATURE - Frontend: WebSocket real-time connection (status, progress, file updates)
-- 2026-02-14: FEATURE - Frontend: Live Preview tab dengan iframe untuk preview website yang dibuat AI
-- 2026-02-14: FEATURE - Frontend: Files tab dengan file browser dan code viewer
-- 2026-02-14: FEATURE - Frontend: Quick action buttons (Website Portfolio, Kalkulator Web, To-Do App)
-- 2026-02-14: FEATURE - Frontend: Progress bar real-time saat AI memproses permintaan
-- 2026-02-14: FEATURE - Frontend: WebSocket "Live" indicator di sidebar
-- 2026-02-14: FEATURE - Backend: WebSocket endpoint /ws untuk broadcast status updates
-- 2026-02-14: FEATURE - Backend: /api/preview-files, /api/project-files, /api/file-content endpoints
-- 2026-02-14: FEATURE - Backend: /api/preview/{filename} untuk serve file preview via iframe
-- 2026-02-14: FEATURE - Workspace Manager: Dynamic multi-project, session isolation, project type detection
-- 2026-02-14: FEATURE - Sandbox: Whitelist mode, workspace isolation per session, path restriction
-- 2026-02-14: UPGRADE - CoderAgent: Full-Stack Autonomous Developer mode
-- 2026-02-14: MAJOR FIX - Coder prompt ditingkatkan: larang pip install, Tkinter, server run via bash
-- 2026-02-14: MAJOR FIX - BashInterpreter skip pip/npm install commands otomatis
-- 2026-02-14: MAJOR FIX - Sandbox skip package install commands (return success)
-- 2026-02-14: CRITICAL FIX - work_dir directory auto-creation
-- 2026-02-14: CRITICAL FIX - Chat history: session disimpan sebelum new_chat/clear_history
-- 2026-02-14: CRITICAL FIX - Agent stop flag & blocks_result di-reset saat new_chat/clear_history
-- 2026-02-14: CRITICAL FIX - is_generating flag di-reset di finally block
-- 2026-02-14: FEATURE - Download ZIP: /api/download-zip endpoint, tombol "Unduh .ZIP"
+- 2026-02-14: FEATURE - Frontend: WebSocket real-time, Live Preview, Files tab, Quick actions
+- 2026-02-14: FEATURE - Backend: WebSocket, preview, project files, download ZIP endpoints
+- 2026-02-14: FEATURE - Workspace Manager: Dynamic multi-project, session isolation
+- 2026-02-14: FEATURE - Sandbox: Whitelist mode, workspace isolation, path restriction
+- 2026-02-14: UPGRADE - CoderAgent: Full-Stack Autonomous Developer mode (max 7 attempts, auto-fix)
+- 2026-02-14: MAJOR FIX - BashInterpreter & Sandbox skip pip/npm install commands
 - 2026-02-14: MAJOR FIX - Router keyword override: tugas koding langsung ke code agent
 - 2026-02-14: CLEANUP - Hapus semua provider kecuali Groq dan HuggingFace
 

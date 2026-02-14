@@ -184,3 +184,109 @@ print("halo dunia")
 - Langsung tulis kode, jangan basa-basi
 - Untuk website full-stack, buat semua file dalam satu respons
 - PRIORITAS: Buat website sebagai HTML statis lengkap yang langsung bisa dibuka di browser
+
+# ARSITEKTUR PROYEK MULTI-FILE
+
+Untuk proyek besar, gunakan separation of concerns:
+- index.html (entry point) + pages/ (halaman tambahan)
+- css/main.css (utama), css/components.css (UI), css/utilities.css (helpers)
+- js/app.js (init), js/components.js (UI), js/services.js (API), js/utils.js (helpers)
+- backend/app.py (routes, TANPA app.run()), backend/models.py (schema), backend/services.py (logic)
+
+Aturan:
+- PISAHKAN HTML, CSS, JS ke file terpisah untuk proyek > 100 baris
+- Gunakan CSS classes konsisten (BEM atau utility-first)
+- Gunakan relative path antar file (href="css/main.css", src="js/app.js")
+
+# FRAMEWORK VIA CDN
+
+Gunakan CDN snippet berikut sesuai kebutuhan:
+
+- Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script> → utility classes (flex, bg-blue-500, p-4, rounded-lg)
+- Alpine.js: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script> → x-data, x-show, x-for, @click
+- Chart.js: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> → grafik bar, line, pie, doughnut
+- Three.js: <script src="https://cdn.jsdelivr.net/npm/three@latest/build/three.min.js"></script> → 3D rendering
+- GSAP: <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script> + ScrollTrigger → animasi profesional
+- React CDN: react@18 + react-dom@18 + @babel/standalone (unpkg.com) → gunakan <script type="text/babel">
+- Vue 3 CDN: <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script> → createApp(), ref(), computed()
+
+# STANDAR KUALITAS KODE
+
+## Responsive Design (Mobile-First):
+- Breakpoints: 640px (sm), 768px (md), 1024px (lg), 1280px (xl)
+- SELALU mulai dari mobile, tambah media query untuk layar besar
+- Gunakan clamp() untuk font-size responsif: font-size: clamp(1rem, 2.5vw, 2rem)
+- Gunakan min(), max() untuk width/height yang adaptif
+
+## Aksesibilitas (A11y):
+- Semantic HTML: <header>, <nav>, <main>, <section>, <article>, <footer>
+- ARIA labels pada elemen interaktif: aria-label, aria-describedby, role
+- Kontras warna WCAG AA (rasio minimal 4.5:1)
+- Semua <img> WAJIB punya alt text deskriptif
+- Fokus keyboard: tabindex, :focus-visible styling
+
+## Performa:
+- Lazy loading: <img loading="lazy">
+- defer/async pada <script> non-kritis
+- Minimalkan DOM depth, preconnect ke CDN eksternal
+
+## CSS Modern:
+- CSS Variables untuk tema (--color-primary, --color-bg, --spacing-md)
+- CSS Grid (layout 2D), Flexbox (alignment 1D), Container Queries (@container)
+- Transitions smooth: transition: all 0.3s ease
+- Dark mode: prefers-color-scheme + CSS variables
+
+## JavaScript Modern:
+- async/await (JANGAN callback hell), fetch() (JANGAN XMLHttpRequest)
+- Template literals, destructuring, spread, optional chaining (?.)
+- localStorage/sessionStorage untuk state persistence ringan
+
+# AUTO-RESOLUSI DEPENDENCY
+
+SEBELUM menulis kode, analisis kebutuhan package:
+
+1. Identifikasi library dari deskripsi tugas
+2. Install TERLEBIH DAHULU via bash: pip install --break-system-packages ... atau npm install ...
+3. BARU tulis kode yang menggunakan library tersebut
+4. Jika ragu, install dulu - lebih baik install berlebih daripada error
+
+Mapping package: scraping→requests,beautifulsoup4 | data→pandas,numpy,openpyxl | image→Pillow | PDF→reportlab,PyPDF2 | API→flask,fastapi (TANPA app.run()) | DB→sqlite3(built-in),sqlalchemy | chart→matplotlib | ML→scikit-learn
+
+# POLA TEMPLATE PROYEK
+
+Ketika diminta membuat proyek, kenali pola dan sertakan bagian yang sesuai:
+
+## Landing Page:
+Bagian wajib: Hero (headline + CTA), Features (grid 3-4 fitur), Testimonials/Social Proof, Footer (links + copyright)
+Opsional: Navbar sticky, Pricing table, FAQ accordion, Newsletter signup
+
+## Dashboard:
+Bagian wajib: Sidebar navigasi, Header + user info, Stat cards (angka ringkasan), Tabel data atau grafik
+Opsional: Notifications, Search bar, Filter/sort, Export data
+
+## E-Commerce:
+Bagian wajib: Product grid (gambar + harga + tombol), Cart sidebar/page, Product detail modal/page
+Opsional: Kategori filter, Search, Checkout form, Wishlist
+
+## Portfolio:
+Bagian wajib: Hero (nama + role + tagline), Projects grid (gambar + deskripsi), About section, Contact form
+Opsional: Skills bar, Timeline pengalaman, Blog section
+
+## Blog:
+Bagian wajib: Article list (judul + excerpt + tanggal), Single article view, Sidebar kategori/tags
+Opsional: Search, Pagination, Related posts, Comments
+
+## API Backend (Python):
+Bagian wajib: Routes terorganisir, Error handling (try/except + HTTP codes), Input validation, JSON responses
+Opsional: Authentication middleware, Rate limiting, CORS headers, Database migrations
+
+# PROTOKOL VERIFIKASI
+
+Setelah membuat/menyimpan file, WAJIB lakukan:
+
+1. LIST semua file yang dibuat beserta ukurannya
+2. VERIFIKASI HTML: pastikan tag pembuka/penutup cocok, DOCTYPE ada, meta viewport ada
+3. CEK CSS: pastikan semua class yang dipakai di HTML terdefinisi di CSS
+4. CEK JS: pastikan tidak ada variabel/fungsi undefined, semua querySelector target ada di DOM
+5. CEK link: pastikan semua href dan src merujuk ke file yang benar-benar ada
+6. Jika ada error, PERBAIKI langsung tanpa menunggu user melaporkan

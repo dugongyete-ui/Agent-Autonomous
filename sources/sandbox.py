@@ -38,6 +38,19 @@ DANGEROUS_PATTERNS = [
     r'\bmarshall\b',
 ]
 
+SERVER_START_PATTERNS = [
+    r'\.run\s*\(',
+    r'app\.run\s*\(',
+    r'uvicorn\.run\s*\(',
+    r'serve\s*\(\s*app',
+    r'httpd\.serve_forever\s*\(',
+    r'socketserver\.',
+    r'http\.server',
+    r'waitress\.serve\s*\(',
+    r'gunicorn',
+    r'flask\s+run',
+]
+
 ALLOWED_PYTHON_MODULES = [
     'math', 'random', 'datetime', 'json', 'csv', 'collections',
     'itertools', 'functools', 'string', 're', 'os.path',
@@ -197,6 +210,35 @@ class SafeExecutor:
                 return False, "Path traversal beyond workspace detected"
         return True, ""
 
+    def _strip_server_start(self, code: str, language: str) -> str:
+        if language != 'python':
+            return code
+        lines = code.split('\n')
+        cleaned = []
+        skip_block = False
+        for line in lines:
+            stripped = line.strip()
+            is_server_line = False
+            for pattern in SERVER_START_PATTERNS:
+                if re.search(pattern, stripped):
+                    is_server_line = True
+                    break
+            if is_server_line:
+                cleaned.append(f"# [sandbox] server start removed: {stripped}")
+                continue
+            if stripped.startswith('if __name__') and '__main__' in stripped:
+                skip_block = True
+                cleaned.append(f"# [sandbox] main block removed: {stripped}")
+                continue
+            if skip_block:
+                if stripped == '' or line[0:1] in (' ', '\t'):
+                    cleaned.append(f"# [sandbox] {stripped}")
+                    continue
+                else:
+                    skip_block = False
+            cleaned.append(line)
+        return '\n'.join(cleaned)
+
     def validate_code(self, code: str, language: str) -> tuple:
         path_safe, path_reason = self._check_path_safety(code)
         if not path_safe:
@@ -226,6 +268,8 @@ class SafeExecutor:
         return self.validate_code(command, 'bash')
 
     def _execute_code(self, code: str, language: str) -> SandboxResult:
+        code = self._strip_server_start(code, language)
+
         is_safe, reason = self.validate_code(code, language)
         if not is_safe:
             self.logger.warning(f"Blocked {language} code: {reason}")

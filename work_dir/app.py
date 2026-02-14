@@ -4,21 +4,23 @@ app = Flask(__name__)
 
 @app.route('/kalkulator', methods=['POST'])
 def kalkulator():
-    data = request.get_json()
-    bil1 = float(data['bil1'])
-    bil2 = float(data['bil2'])
+    data = request.json
+    angka1 = data['angka1']
+    angka2 = data['angka2']
     operator = data['operator']
 
     if operator == '+':
-        hasil = bil1 + bil2
+        result = angka1 + angka2
     elif operator == '-':
-        hasil = bil1 - bil2
+        result = angka1 - angka2
     elif operator == '*':
-        hasil = bil1 * bil2
+        result = angka1 * angka2
     elif operator == '/':
-        if bil2 != 0:
-            hasil = bil1 / bil2
+        if angka2 != 0:
+            result = angka1 / angka2
         else:
-            return jsonify({'error': 'Tidak bisa membagi dengan nol'}), 400
+            result = 'Error: Pembagian dengan nol!'
+    else:
+        result = 'Error: Operator tidak valid!'
 
-    return jsonify({'hasil': hasil})
+    return jsonify({'hasil': result})

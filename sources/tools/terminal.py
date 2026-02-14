@@ -31,11 +31,7 @@ class PersistentTerminal:
 
         if is_install:
             if command.strip().startswith(('pip install', 'pip3 install')):
-                command = command.strip()
-                if '--break-system-packages' not in command:
-                    parts = command.split(maxsplit=2)
-                    if len(parts) >= 3:
-                        command = f"{parts[0]} {parts[1]} --break-system-packages {parts[2]}"
+                command = command.strip().replace(' --break-system-packages', '')
 
         env = os.environ.copy()
         env['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -242,7 +238,7 @@ class PersistentTerminal:
 
     def install_package(self, package_name: str, package_manager: str = "pip") -> dict:
         if package_manager == "pip":
-            cmd = f"pip install --break-system-packages {package_name}"
+            cmd = f"pip install {package_name}"
         elif package_manager == "npm":
             cmd = f"npm install {package_name}"
         else:

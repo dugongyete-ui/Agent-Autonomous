@@ -452,9 +452,6 @@ class SafeExecutor:
         return any(pattern in cmd_lower for pattern in allowed_patterns)
 
     def _add_pip_safety(self, command: str) -> str:
-        if '--break-system-packages' not in command:
-            command = command.replace('pip install', 'pip install --break-system-packages', 1)
-            command = command.replace('pip3 install', 'pip3 install --break-system-packages', 1)
         return command
 
     def _execute_shell(self, command: str) -> SandboxResult:
@@ -467,9 +464,7 @@ class SafeExecutor:
             )
 
         if self._is_allowed_install(command):
-            cmd_lower = command.lower().strip()
-            if cmd_lower.startswith(("pip install", "pip3 install")):
-                command = self._add_pip_safety(command)
+            command = command.replace(' --break-system-packages', '')
             self.logger.info(f"Autonomous: executing install: {command[:100]}")
             return self._execute_shell_raw(command)
 
@@ -493,11 +488,15 @@ class SafeExecutor:
                     os.setsid()
                     self._set_resource_limits()
 
+            env = os.environ.copy()
+            env['PYTHONDONTWRITEBYTECODE'] = '1'
+
             process = subprocess.Popen(
                 ['bash', '-c', command],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=self.work_dir,
+                env=env,
                 preexec_fn=preexec if os.name != 'nt' else None
             )
 

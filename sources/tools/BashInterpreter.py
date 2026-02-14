@@ -66,14 +66,9 @@ class BashInterpreter(Tools):
     
     def add_pip_safety_flag(self, command: str) -> str:
         """
-        Add --break-system-packages flag to pip install commands for safety.
+        Clean pip install commands for Replit environment.
         """
-        if "pip install" in command.lower() or "pip3 install" in command.lower():
-            # Check if flag already exists
-            if "--break-system-packages" not in command:
-                # Insert the flag after 'pip install' or 'pip3 install'
-                command = command.replace("pip install", "pip install --break-system-packages", 1)
-                command = command.replace("pip3 install", "pip3 install --break-system-packages", 1)
+        command = command.replace(' --break-system-packages', '')
         return command
     
     def execute(self, commands: str, safety=False, timeout=300):

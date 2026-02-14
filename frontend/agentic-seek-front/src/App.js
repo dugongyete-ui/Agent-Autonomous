@@ -30,6 +30,10 @@ function App() {
   const [realtimeDetails, setRealtimeDetails] = useState("");
   const [projectFiles, setProjectFiles] = useState([]);
   const [selectedFileContent, setSelectedFileContent] = useState(null);
+  const [editorContent, setEditorContent] = useState(null);
+  const [editorModified, setEditorModified] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null);
   const messagesEndRef = useRef(null);
   const wsRef = useRef(null);
   const previewIframeRef = useRef(null);
@@ -140,6 +144,58 @@ function App() {
       setSelectedFileContent({ file: filePath, content: res.data.content, size: res.data.size });
     } catch (err) {
       console.error("Error fetching file content:", err);
+    }
+  };
+
+  const fetchEditorFileContent = async (filePath) => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/file-content/${filePath}`);
+      setEditorContent({ file: filePath, content: res.data.content, size: res.data.size });
+      setEditorModified(false);
+      setSaveStatus(null);
+    } catch (err) {
+      console.error("Error fetching file content:", err);
+    }
+  };
+
+  const handleSaveFile = async () => {
+    if (!editorContent || !editorModified) return;
+    setIsSaving(true);
+    setSaveStatus(null);
+    try {
+      await axios.put(`${BACKEND_URL}/api/file-content/${editorContent.file}`, {
+        content: editorContent.content
+      });
+      setEditorModified(false);
+      setSaveStatus("saved");
+      fetchProjectFiles();
+      fetchPreviewFiles();
+      setTimeout(() => setSaveStatus(null), 3000);
+    } catch (err) {
+      console.error("Error saving file:", err);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus(null), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditorKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      handleSaveFile();
+    }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = e.target.selectionStart;
+      const end = e.target.selectionEnd;
+      const val = e.target.value;
+      const newVal = val.substring(0, start) + "  " + val.substring(end);
+      setEditorContent(prev => ({ ...prev, content: newVal }));
+      setEditorModified(true);
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = start + 2;
+      }, 0);
     }
   };
 
@@ -412,6 +468,24 @@ function App() {
     }
   };
 
+  const handleDownloadFile = async (filePath) => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/file-content/${filePath}`);
+      const blob = new Blob([res.data.content], { type: "text/plain" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filePath.split("/").pop());
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error downloading file:", err);
+      setError("Gagal mengunduh file.");
+    }
+  };
+
   const refreshPreview = () => {
     if (previewIframeRef.current) {
       previewIframeRef.current.src = previewIframeRef.current.src;
@@ -477,16 +551,37 @@ function App() {
     const ext = filename.split('.').pop().toLowerCase();
     const iconMap = {
       'html': '#e44d26', 'css': '#264de4', 'js': '#f7df1e',
+      'jsx': '#61dafb', 'ts': '#3178c6', 'tsx': '#3178c6',
       'py': '#3776ab', 'json': '#292929', 'md': '#083fa1',
       'txt': '#666', 'svg': '#ffb13b', 'go': '#00add8',
+      'rs': '#dea584', 'java': '#b07219', 'cpp': '#f34b7d',
+      'c': '#555555', 'sh': '#89e051', 'yml': '#cb171e',
+      'yaml': '#cb171e', 'toml': '#9c4121', 'ini': '#d1dbe0',
     };
     return iconMap[ext] || '#888';
+  };
+
+  const getFileExtIcon = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    const emojiMap = {
+      'html': '🌐', 'css': '🎨', 'js': '⚡', 'jsx': '⚛️',
+      'ts': '📘', 'tsx': '📘', 'py': '🐍', 'json': '📋',
+      'md': '📝', 'txt': '📄', 'svg': '🖼️', 'go': '🔵',
+      'sh': '💻', 'yml': '⚙️', 'yaml': '⚙️', 'ini': '⚙️',
+    };
+    return emojiMap[ext] || '📄';
   };
 
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getLineNumbers = (content) => {
+    if (!content) return "";
+    const lines = content.split("\n");
+    return lines.map((_, i) => i + 1).join("\n");
   };
 
   return (
@@ -679,10 +774,13 @@ function App() {
       )}
 
       <main className="main-content">
-        {isLoading && realtimeProgress > 0 && (
+        {(isLoading || realtimeProgress > 0) && (
           <div className="progress-bar-container">
-            <div className="progress-bar" style={{ width: `${realtimeProgress * 100}%` }} />
-            {realtimeDetails && <span className="progress-label">{realtimeDetails}</span>}
+            <div className="progress-bar" style={{ width: `${Math.max(realtimeProgress * 100, isLoading ? 5 : 0)}%` }} />
+            <div className="progress-info">
+              {realtimeDetails && <span className="progress-label">{realtimeDetails}</span>}
+              {isLoading && <span className="progress-percent">{Math.round(realtimeProgress * 100)}%</span>}
+            </div>
           </div>
         )}
 
@@ -757,19 +855,26 @@ function App() {
               {messages.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                    </svg>
+                    <img src={faviconPng} alt="Agent Dzeck AI" className="empty-logo" />
                   </div>
                   <h3>Selamat Datang di Agent Dzeck AI</h3>
-                  <p>AI Agent full-stack siap membantu Anda. Ketik pesan di bawah untuk mulai!</p>
+                  <p>AI Agent full-stack siap membantu Anda membuat website, aplikasi, dan banyak lagi.</p>
                   {modelConfig && (
                     <p className="empty-hint">Model aktif: {modelConfig.providers[modelConfig.current_provider]?.name} - {modelConfig.current_model}</p>
                   )}
                   <div className="quick-actions">
-                    <button className="quick-btn" onClick={() => { setQuery("Buatkan website portfolio modern"); }}>Website Portfolio</button>
-                    <button className="quick-btn" onClick={() => { setQuery("Buatkan kalkulator web dengan design menarik"); }}>Kalkulator Web</button>
-                    <button className="quick-btn" onClick={() => { setQuery("Buatkan to-do list app dengan local storage"); }}>To-Do App</button>
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan website portfolio modern"); }}>
+                      <span className="quick-icon">🌐</span> Website Portfolio
+                    </button>
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan kalkulator web dengan design menarik"); }}>
+                      <span className="quick-icon">🧮</span> Kalkulator Web
+                    </button>
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan to-do list app dengan local storage"); }}>
+                      <span className="quick-icon">📝</span> To-Do App
+                    </button>
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan landing page startup modern"); }}>
+                      <span className="quick-icon">🚀</span> Landing Page
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -783,7 +888,7 @@ function App() {
                         <span className="agent-badge">{msg.agentName}</span>
                         {msg.reasoning && (
                           <button className="reasoning-btn" onClick={() => toggleReasoning(index)}>
-                            {expandedReasoning.has(index) ? "Sembunyikan" : "Lihat"} Alasan
+                            {expandedReasoning.has(index) ? "🔽 Sembunyikan" : "💡 Lihat"} Alasan
                           </button>
                         )}
                       </div>
@@ -804,6 +909,7 @@ function App() {
                   <div className="typing-dot" />
                   <div className="typing-dot" />
                   <div className="typing-dot" />
+                  {realtimeDetails && <span className="typing-status">{realtimeDetails}</span>}
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -883,15 +989,18 @@ function App() {
               ) : (
                 <div className="empty-state">
                   <div className="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                       <line x1="8" y1="21" x2="16" y2="21"/>
                       <line x1="12" y1="17" x2="12" y2="21"/>
                     </svg>
                   </div>
-                  <h3>Live Preview</h3>
+                  <h3>Belum Ada Preview</h3>
                   <p>Preview website yang dibuat AI akan tampil di sini secara langsung.</p>
-                  <p className="empty-hint">Minta AI membuat website untuk melihat preview-nya di sini.</p>
+                  <p className="empty-hint">Minta AI membuat website HTML untuk melihat preview-nya di sini.</p>
+                  <button className="empty-action-btn" onClick={() => { setActiveView("chat"); setQuery("Buatkan website landing page modern"); }}>
+                    Buat Website Sekarang
+                  </button>
                 </div>
               )}
             </div>
@@ -900,56 +1009,104 @@ function App() {
 
         {activeView === "editor" && (
           <div className="editor-panel">
-            <div className="panel-header">
-              <h2>Editor - Output Kode</h2>
-              <div className="panel-header-right">
-                <span className="panel-badge">
-                  {responseData?.blocks ? `${Object.keys(responseData.blocks).length} blok` : "Kosong"}
-                </span>
-                <button className="download-zip-btn" onClick={handleDownloadZip} title="Unduh Project sebagai .ZIP">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  <span>Unduh .ZIP</span>
-                </button>
-              </div>
-            </div>
-            <div className="editor-content">
-              {responseData && responseData.blocks && Object.values(responseData.blocks).length > 0 ? (
-                Object.values(responseData.blocks).map((block, index) => (
-                  <div key={index} className="code-block">
-                    <div className="code-block-header">
-                      <span className="code-block-tool">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                        {block.tool_type}
-                      </span>
-                      <span className={`code-block-status ${block.success ? "success" : "failure"}`}>
-                        {block.success ? "Berhasil" : "Gagal"}
-                      </span>
-                    </div>
-                    <pre className="code-block-content">{block.block}</pre>
-                    {block.feedback && (
-                      <div className="code-block-feedback">
-                        <span>Feedback:</span> {block.feedback}
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <polyline points="16 18 22 12 16 6"/>
-                      <polyline points="8 6 2 12 8 18"/>
+            <div className="editor-layout">
+              <div className="editor-sidebar">
+                <div className="editor-sidebar-header">
+                  <span className="editor-sidebar-title">File Project</span>
+                  <button className="refresh-btn-sm" onClick={fetchProjectFiles} title="Refresh">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="23 4 23 10 17 10"/>
+                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                     </svg>
-                  </div>
-                  <h3>Editor View</h3>
-                  <p>Di sini akan muncul output kode, hasil eksekusi tool, dan log dari AI agent saat memproses permintaan Anda.</p>
-                  <p className="empty-hint">Kirim pesan ke AI untuk melihat hasilnya di sini.</p>
+                  </button>
                 </div>
-              )}
+                <div className="editor-file-tree">
+                  {projectFiles.length > 0 ? (
+                    projectFiles.map((file, index) => (
+                      <button
+                        key={index}
+                        className={`editor-file-item ${editorContent?.file === file.name ? "active" : ""}`}
+                        onClick={() => fetchEditorFileContent(file.name)}
+                        title={file.name}
+                      >
+                        <span className="editor-file-icon">{getFileExtIcon(file.name)}</span>
+                        <div className="editor-file-info">
+                          <span className="editor-file-name">{file.name}</span>
+                          <span className="editor-file-size">{formatFileSize(file.size)}</span>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="editor-empty-tree">
+                      <p>Belum ada file.</p>
+                      <p className="editor-empty-hint">Minta AI untuk membuat project.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="editor-main">
+                {editorContent ? (
+                  <>
+                    <div className="editor-header">
+                      <div className="editor-header-left">
+                        <span className="editor-file-badge">{getFileExtIcon(editorContent.file)}</span>
+                        <span className="editor-filename">{editorContent.file}</span>
+                        <span className="editor-filesize">{formatFileSize(editorContent.size)}</span>
+                        {editorModified && <span className="editor-modified-dot">*</span>}
+                      </div>
+                      <div className="editor-header-right">
+                        {saveStatus === "saved" && (
+                          <span className="save-status success">Tersimpan ✓</span>
+                        )}
+                        {saveStatus === "error" && (
+                          <span className="save-status error">Gagal menyimpan</span>
+                        )}
+                        <button
+                          className={`editor-save-btn ${editorModified ? "active" : ""}`}
+                          onClick={handleSaveFile}
+                          disabled={!editorModified || isSaving}
+                          title="Simpan (Ctrl+S)"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                          </svg>
+                          {isSaving ? "Menyimpan..." : "Simpan"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="editor-code-area">
+                      <div className="editor-line-numbers">
+                        {getLineNumbers(editorContent.content)}
+                      </div>
+                      <textarea
+                        className="editor-textarea"
+                        value={editorContent.content}
+                        onChange={(e) => {
+                          setEditorContent(prev => ({ ...prev, content: e.target.value }));
+                          setEditorModified(true);
+                        }}
+                        onKeyDown={handleEditorKeyDown}
+                        spellCheck={false}
+                        wrap="off"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-icon">
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="16 18 22 12 16 6"/>
+                        <polyline points="8 6 2 12 8 18"/>
+                      </svg>
+                    </div>
+                    <h3>Editor Kode</h3>
+                    <p>Pilih file dari panel kiri untuk mulai mengedit. Perubahan bisa disimpan langsung ke project.</p>
+                    <p className="empty-hint">Gunakan Ctrl+S untuk menyimpan dengan cepat.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -957,7 +1114,7 @@ function App() {
         {activeView === "files" && (
           <div className="files-panel">
             <div className="panel-header">
-              <h2>Project Files</h2>
+              <h2>File Project</h2>
               <div className="panel-header-right">
                 <span className="panel-badge">{projectFiles.length} file</span>
                 <button className="refresh-btn" onClick={fetchProjectFiles} title="Refresh">
@@ -965,6 +1122,14 @@ function App() {
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                   </svg>
+                </button>
+                <button className="download-zip-btn" onClick={handleDownloadZip} title="Unduh Project sebagai .ZIP">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <span>Unduh .ZIP</span>
                 </button>
               </div>
             </div>
@@ -995,13 +1160,49 @@ function App() {
                 {selectedFileContent ? (
                   <div className="file-viewer-content">
                     <div className="file-viewer-header">
-                      <span className="file-viewer-name">{selectedFileContent.file}</span>
-                      <span className="file-viewer-size">{formatFileSize(selectedFileContent.size)}</span>
+                      <div className="file-viewer-header-left">
+                        <span className="file-viewer-icon">{getFileExtIcon(selectedFileContent.file)}</span>
+                        <span className="file-viewer-name">{selectedFileContent.file}</span>
+                      </div>
+                      <div className="file-viewer-header-right">
+                        <span className="file-viewer-size">{formatFileSize(selectedFileContent.size)}</span>
+                        <button
+                          className="file-download-btn"
+                          onClick={() => handleDownloadFile(selectedFileContent.file)}
+                          title="Unduh file ini"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="file-edit-btn"
+                          onClick={() => {
+                            setEditorContent({ ...selectedFileContent });
+                            setEditorModified(false);
+                            setActiveView("editor");
+                          }}
+                          title="Edit di Editor"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <pre className="file-viewer-code">{selectedFileContent.content}</pre>
                   </div>
                 ) : (
                   <div className="empty-state">
+                    <div className="empty-icon">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                    </div>
                     <p>Pilih file untuk melihat isinya</p>
                   </div>
                 )}
@@ -1045,7 +1246,7 @@ function App() {
               ) : (
                 <div className="empty-state">
                   <div className="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"/>
                       <line x1="2" y1="12" x2="22" y2="12"/>
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>

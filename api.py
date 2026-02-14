@@ -546,6 +546,27 @@ async def get_file_content(file_path: str):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@api.put("/api/file-content/{file_path:path}")
+async def save_file_content(file_path: str, request: dict):
+    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    full_path = os.path.join(work_dir, file_path)
+    if not full_path.startswith(os.path.abspath(work_dir)):
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    try:
+        content = request.get("content", "")
+        async with aiofiles.open(full_path, 'w', encoding='utf-8') as f:
+            await f.write(content)
+        await ws_manager.send_file_update("save", file_path)
+        return JSONResponse(status_code=200, content={
+            "status": "saved",
+            "file": file_path,
+            "size": os.path.getsize(full_path)
+        })
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @api.get("/api/workspace/stats")
 async def workspace_stats():
     return JSONResponse(status_code=200, content=workspace_mgr.get_workspace_stats())

@@ -256,6 +256,14 @@ class SafeExecutor:
             env = os.environ.copy()
             if language == 'python':
                 env['PYTHONDONTWRITEBYTECODE'] = '1'
+                pythonlibs = os.path.join(os.path.expanduser('~'), 'workspace', '.pythonlibs', 'lib')
+                if os.path.isdir(pythonlibs):
+                    for d in os.listdir(pythonlibs):
+                        sp = os.path.join(pythonlibs, d, 'site-packages')
+                        if os.path.isdir(sp):
+                            existing = env.get('PYTHONPATH', '')
+                            env['PYTHONPATH'] = sp + (':' + existing if existing else '')
+                            break
 
             cmd = config['command'] + [temp_path]
             self.logger.info(f"Executing {language}: {cmd[0]} ...")

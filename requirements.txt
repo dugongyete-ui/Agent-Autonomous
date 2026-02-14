@@ -84,3 +84,6 @@ termcolor
 tqdm
 transformers
 uvicorn
+flask
+jinja2
+pillow

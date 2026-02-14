@@ -83,6 +83,8 @@ CORE_PACKAGES=(
   "regex"
   "pillow"
   "markdown-it-py"
+  "flask"
+  "jinja2"
 )
 
 for pkg in "${CORE_PACKAGES[@]}"; do

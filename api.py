@@ -574,15 +574,27 @@ async def get_model_config():
     models_by_provider = {
         "groq": {
             "name": "Groq",
-            "models": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"],
+            "models": [
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant",
+                "qwen/qwen3-32b",
+                "meta-llama/llama-4-scout-17b-16e-instruct",
+                "openai/gpt-oss-20b",
+            ],
             "server": "https://api.groq.com/openai/v1",
             "api_key_env": "GROQ_API_KEY"
         },
         "huggingface": {
-            "name": "HuggingFace (Gratis)",
-            "models": ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct", "meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"],
+            "name": "HuggingFace",
+            "models": [
+                "Qwen/Qwen2.5-72B-Instruct",
+                "Qwen/Qwen2.5-3B-Instruct",
+                "meta-llama/Llama-3.3-70B-Instruct",
+                "mistralai/Mixtral-8x7B-Instruct-v0.1",
+            ],
             "server": "https://api-inference.huggingface.co",
-            "api_key_env": "HUGGINGFACE_API_KEY"
+            "api_key_env": "HUGGINGFACE_API_KEY",
+            "note": "Membutuhkan kredit HuggingFace"
         }
     }
 

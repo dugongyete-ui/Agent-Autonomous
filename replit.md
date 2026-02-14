@@ -58,6 +58,11 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: BUG FIX - New Project tidak membersihkan file lama
+  - Tambah endpoint POST /new_project yang menghapus semua file di work_dir + reset chat + reset agent memory
+  - Frontend handleNewChat sekarang memanggil /new_project bukan /new_chat
+  - Frontend me-reset semua state: previewFiles, projectFiles, editorContent, selectedPreviewFile dll
+  - File project lama sekarang benar-benar terhapus saat membuat project baru
 - 2026-02-14: CRITICAL FIX - pip install gagal di Replit Nix environment
   - Removed `--break-system-packages` flag dari sandbox.py, terminal.py, BashInterpreter.py
   - Replit pip bekerja tanpa flag khusus, flag tersebut malah menyebabkan "externally-managed-environment" error

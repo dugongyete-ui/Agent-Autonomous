@@ -1,14 +1,14 @@
-# AgenticSeek / KodeAgent
+# Agent Dzeck AI
 
 ## Overview
-AgenticSeek is an autonomous AI agent system with web browsing, code execution, and file manipulation capabilities. It uses a FastAPI backend serving a React frontend, powered by Groq's llama-3.3-70b-versatile model. Features include sandboxed code execution, ML-based agent routing (BART + AdaptiveClassifier), multi-agent architecture, and robust error recovery.
+Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, eksekusi kode, dan manipulasi file. Menggunakan backend FastAPI yang melayani frontend React, didukung oleh model Groq llama-3.3-70b-versatile. Fitur meliputi eksekusi kode sandbox, routing agent berbasis ML (BART + AdaptiveClassifier), arsitektur multi-agent, dan pemulihan error yang robust.
 
 ## Architecture
 - **Backend**: Python FastAPI (api.py) on port 5000
 - **Frontend**: React app pre-built at `frontend/agentic-seek-front/build/`, served as static files by FastAPI
 - **AI Provider**: Groq API with llama-3.3-70b-versatile model
 - **Agent System**: ML-based router (BART zero-shot + AdaptiveClassifier) selects from 5 agents:
-  - CasualAgent (Jarvis) - general conversation
+  - CasualAgent (Dzeck) - general conversation
   - CoderAgent (Coder) - code execution with sandbox safety
   - FileAgent (File) - file manipulation
   - BrowserAgent (Browser) - web browsing via Selenium/Chromium headless
@@ -52,43 +52,42 @@ AgenticSeek is an autonomous AI agent system with web browsing, code execution, 
 - Transformers (~300MB) - BART, MarianMT, LED models
 - AdaptiveClassifier - Agent routing model
 - Selenium + chromedriver - Browser automation
+- protobuf - Protocol Buffers (core dependency)
 - Full list in setup_dependencies.sh
 
 ## Configuration
 - Provider: groq (set in config.ini)
 - Model: llama-3.3-70b-versatile
 - GROQ_API_KEY: stored as secret
+- agent_name: Dzeck
 - Browser: headless mode (required for Replit environment)
 - work_dir: /home/runner/workspace/work
+- languages: id (Indonesian)
 
 ## User Preferences
 - Language: Indonesian (Bahasa Indonesia)
 - Keep all heavy ML dependencies (torch, transformers) - user explicitly approved 2GB+ size
 - Full ML-based routing preferred over lightweight keyword-based
+- Project name: Agent Dzeck AI (renamed from KodeAgent/AgenticSeek)
 
 ## Recent Changes
-- 2026-02-13: Restored full ML router (BART + AdaptiveClassifier) with torch/transformers
-- 2026-02-13: Restored full memory compression with LED summarization model
-- 2026-02-13: Upgraded Sandbox: added JS/Go support, resource limiting, output truncation, logging
-- 2026-02-13: Updated setup_dependencies.sh with complete dependency list
-- 2026-02-13: Added work_dir to config.ini
-- 2026-02-13: Fixed port 5000 conflict (killed stale Node.js/Expo processes)
-- 2026-02-13: Fixed Memory.get() to strip unsupported fields before sending to Groq API
-- 2026-02-13: Added Sandbox system (SafeExecutor) with dangerous pattern checks
-- 2026-02-13: Fixed PlannerAgent JSON parsing with 4 fallback extraction methods
-- 2026-02-13: Fixed interaction.py is_active property/attribute conflict
-- 2026-02-13: Speech import made optional with try/except fallback
+- 2026-02-14: Renamed project from "KodeAgent" to "Agent Dzeck AI" across entire codebase
+- 2026-02-14: Updated all prompts (base + jarvis) to use "Agent Dzeck AI" branding
+- 2026-02-14: Fixed parse_agent_tasks bug - removed task_names count dependency, always uses task['task']
+- 2026-02-14: Moved protobuf from OPTIONAL to CORE packages in setup_dependencies.sh
+- 2026-02-14: Updated config.ini agent_name from Jarvis to Dzeck
+- 2026-02-14: Rebuilt frontend with new branding
+- 2026-02-14: All prompts confirmed in Bahasa Indonesia
 - 2026-02-14: PlannerAgent now displays plan in chat (format_plan_text, current_plan, plan_progress)
 - 2026-02-14: Added normalize_agent_name() with alias mapping for robust agent name parsing
 - 2026-02-14: Increased make_plan retries to 5 with escalating retry prompts
 - 2026-02-14: Plan progress shown real-time in chat: "Langkah X dari Y" with current task
 - 2026-02-14: parse_agent_tasks fallback: auto-detect plan key, fallback unknown agents to coder
-- 2026-02-14: Updated setup_dependencies.sh with LLM providers, more ML packages, pip upgrade, module verification
 - 2026-02-14: Added fallback plan builder (try_build_fallback_plan) - extracts tasks from non-JSON LLM responses
-- 2026-02-14: Improved planning prompt with stronger JSON format enforcement in Indonesian
-- 2026-02-14: Added [MODELS] section to config.ini with all supported providers and model options
 - 2026-02-14: ChromeDriver discovery: added Nix store search fallback for dynamic paths
-- 2026-02-14: Cleaned up requirements.txt (removed duplicates, added huggingface-hub, tokenizers, rich, emoji, nltk)
+- 2026-02-13: Restored full ML router (BART + AdaptiveClassifier) with torch/transformers
+- 2026-02-13: Restored full memory compression with LED summarization model
+- 2026-02-13: Upgraded Sandbox: added JS/Go support, resource limiting, output truncation, logging
 
 ## Running
 - Workflow "Start application" runs `python api.py`

@@ -43,10 +43,21 @@ class CoderAgent(Agent):
     
     def add_sys_info_prompt(self, prompt):
         """Add system information to the prompt."""
-        info = f"System Info:\n" \
-               f"OS: {platform.system()} {platform.release()}\n" \
-               f"Python Version: {platform.python_version()}\n" \
-               f"\nYou must save file at root directory: {self.work_dir}"
+        info = (
+            f"System Info:\n"
+            f"OS: {platform.system()} {platform.release()}\n"
+            f"Python Version: {platform.python_version()}\n"
+            f"Environment: Server headless (tanpa display/GUI)\n"
+            f"Direktori kerja: {self.work_dir}\n"
+            f"Library tersedia: flask, requests, beautifulsoup4, numpy, dan library standar Python\n"
+            f"\nATURAN WAJIB:\n"
+            f"- Simpan semua file di direktori kerja dengan format ```bahasa:namafile\n"
+            f"- JANGAN jalankan pip install atau npm install via bash\n"
+            f"- JANGAN gunakan Tkinter atau library GUI desktop\n"
+            f"- JANGAN jalankan server (python app.py, flask run) via bash\n"
+            f"- Untuk website: buat sebagai HTML statis lengkap (HTML+CSS+JS dalam satu file)\n"
+            f"- Untuk backend: simpan file saja, jangan jalankan server"
+        )
         return f"{prompt}\n\n{info}"
 
     def sandbox_execute(self, code: str, language: str) -> tuple:
@@ -159,7 +170,7 @@ class CoderAgent(Agent):
             answer = self.remove_blocks(answer)
             self.last_answer = answer
             await asyncio.sleep(0)
-            if exec_success and self.get_last_tool_type() != "bash":
+            if exec_success:
                 self.status_message = "Selesai"
                 break
             pretty_print(f"Execution failure:\n{feedback}", color="failure")

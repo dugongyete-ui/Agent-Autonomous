@@ -26,9 +26,26 @@ class BashInterpreter(Tools):
         If so, return True, otherwise return False.
         Code written by the AI will be executed automatically, so it should not use bash to run it.
         """
-        lang_interpreter = ["python", "gcc", "g++", "mvn", "go", "java", "javac", "rustc", "clang", "clang++", "rustc", "rustc++", "rustc++"]
+        lang_interpreter = ["python", "python3", "gcc", "g++", "mvn", "go", "java", "javac", "rustc", "clang", "clang++", "node"]
         for word in command.split():
             if any(word.startswith(lang) for lang in lang_interpreter):
+                return True
+        return False
+
+    def is_package_install_command(self, command: str) -> bool:
+        """
+        Detect if AI is trying to install packages via bash.
+        These commands should be skipped as packages are managed by the system.
+        """
+        install_patterns = [
+            "pip install", "pip3 install", "pip3 install",
+            "npm install", "npm i ", "yarn add", "yarn install",
+            "apt install", "apt-get install", "apt update", "apt-get update",
+            "brew install", "conda install",
+        ]
+        cmd_lower = command.lower().strip()
+        for pattern in install_patterns:
+            if pattern in cmd_lower:
                 return True
         return False
     
@@ -43,8 +60,11 @@ class BashInterpreter(Tools):
         if self.work_dir and not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir, exist_ok=True)
         for command in commands:
-            command = f"cd {self.work_dir} && {command}"
-            command = command.replace('\n', '')
+            raw_command = command.replace('\n', '').strip()
+            if self.is_package_install_command(raw_command):
+                concat_output += f"[skipped] Package install command skipped (packages are pre-installed): {raw_command}\n"
+                continue
+            command = f"cd {self.work_dir} && {raw_command}"
             if self.safe_mode and is_any_unsafe(commands):
                 print(f"Unsafe command rejected: {command}")
                 return "\nUnsafe command: {command}. Execution aborted. This is beyond allowed capabilities report to user."

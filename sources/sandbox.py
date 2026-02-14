@@ -271,7 +271,25 @@ class SafeExecutor:
             except OSError:
                 pass
 
+    def _is_package_install(self, command: str) -> bool:
+        cmd_lower = command.lower().strip()
+        install_patterns = [
+            "pip install", "pip3 install",
+            "npm install", "npm i ", "yarn add", "yarn install",
+            "apt install", "apt-get install", "apt update", "apt-get update",
+            "brew install", "conda install",
+        ]
+        return any(pattern in cmd_lower for pattern in install_patterns)
+
     def _execute_shell(self, command: str) -> SandboxResult:
+        if self._is_package_install(command):
+            self.logger.info(f"Skipped package install command: {command[:100]}")
+            return SandboxResult(
+                success=True,
+                output=f"[skipped] Package install skipped (packages are pre-installed): {command.strip()}",
+                errors="", execution_time=0.0, language='bash'
+            )
+
         is_safe, reason = self.validate_bash(command)
         if not is_safe:
             self.logger.warning(f"Blocked bash command: {reason}")

@@ -55,6 +55,11 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: MAJOR FIX - Coder prompt ditingkatkan: larang pip install, Tkinter, server run via bash. Fokus HTML statis
+- 2026-02-14: MAJOR FIX - BashInterpreter skip pip/npm install commands otomatis (tidak error lagi)
+- 2026-02-14: MAJOR FIX - Sandbox skip package install commands (return success instead of error)
+- 2026-02-14: MAJOR FIX - add_sys_info_prompt beri konteks lingkungan yang benar ke AI (headless, library tersedia, aturan wajib)
+- 2026-02-14: FIX - code_agent process() tidak lagi force-debug pada bash success
 - 2026-02-14: CRITICAL FIX - work_dir directory auto-creation: api.py, tools.py, BashInterpreter.py, sandbox.py semua memastikan /home/runner/workspace/work dibuat otomatis
 - 2026-02-14: CRITICAL FIX - Chat history: session disimpan sebelum new_chat/clear_history (save_session=True di config.ini)
 - 2026-02-14: CRITICAL FIX - Agent stop flag & blocks_result di-reset saat new_chat/clear_history

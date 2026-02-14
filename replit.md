@@ -70,6 +70,12 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Full ML-based routing preferred over lightweight keyword-based
 - Project name: Agent Dzeck AI (renamed from KodeAgent/AgenticSeek)
 
+## Features
+- Model selector UI di sidebar: dropdown cascade provider->model, 7 provider didukung
+- Model badge di chat header menampilkan model aktif
+- Model selector juga tersedia di mobile menu drawer
+- Auto-reinitialize agent system saat model diganti, feedback di chat
+
 ## Recent Changes
 - 2026-02-14: Renamed project from "KodeAgent" to "Agent Dzeck AI" across entire codebase
 - 2026-02-14: Updated all prompts (base + jarvis) to use "Agent Dzeck AI" branding

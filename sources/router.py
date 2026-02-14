@@ -376,6 +376,23 @@ class AgentRouter:
             ("cari informasi tentang AI", "web"),
             ("cari berita terbaru", "web"),
             ("cari harga laptop murah", "web"),
+            ("carikan website drama China", "web"),
+            ("carikan website drama Korea", "web"),
+            ("carikan situs streaming anime", "web"),
+            ("cari website nonton film gratis", "web"),
+            ("carikan informasi tentang laptop gaming", "web"),
+            ("cari tutorial Python online", "web"),
+            ("carikan harga HP Samsung terbaru", "web"),
+            ("cari resep masakan Indonesia", "web"),
+            ("temukan website belajar bahasa Inggris", "web"),
+            ("carikan berita teknologi terbaru", "web"),
+            ("cari hotel murah di Bali", "web"),
+            ("carikan tiket pesawat Jakarta Surabaya", "web"),
+            ("cari review laptop Asus terbaru", "web"),
+            ("carikan jadwal bioskop hari ini", "web"),
+            ("cari website download lagu", "web"),
+            ("temukan artikel tentang kesehatan", "web"),
+            ("carikan situs belanja online terpercaya", "web"),
             ("temukan file bernama data.csv", "files"),
             ("cari file laporan.pdf di drive", "files"),
             ("buat folder baru bernama proyek", "files"),
@@ -454,13 +471,33 @@ class AgentRouter:
         web_search_keywords = [
             'cari di internet', 'cari di web', 'browse', 'search online',
             'cari informasi', 'cari berita', 'cari harga', 'cari referensi',
-            'search the web', 'find online', 'look up'
+            'search the web', 'find online', 'look up',
+            'cari di google', 'googling', 'search for',
         ]
-        is_web_task = any(kw in text_lower for kw in web_search_keywords)
+        web_action_words = {'carikan', 'cari', 'temukan', 'carilah', 'tolong carikan',
+                           'search', 'find', 'lookup', 'browse', 'googling'}
+        web_target_words = {'website', 'web', 'situs', 'link', 'artikel', 'berita',
+                           'informasi', 'info', 'harga', 'drama', 'film', 'movie',
+                           'video', 'musik', 'lagu', 'resep', 'recipe', 'review',
+                           'tutorial', 'news', 'price', 'toko', 'shop', 'store',
+                           'hotel', 'tiket', 'ticket', 'jadwal', 'schedule',
+                           'cuaca', 'weather', 'stock', 'saham', 'crypto',
+                           'anime', 'manga', 'novel', 'buku', 'book'}
+
+        has_web_action = bool(words & web_action_words)
+        has_web_target = bool(words & web_target_words)
+        is_web_search_by_keyword = has_web_action and has_web_target
+        is_web_task = any(kw in text_lower for kw in web_search_keywords) or is_web_search_by_keyword
 
         is_code_task = (has_action and has_target) or has_phrase
 
-        if is_code_task and not is_web_task:
+        if is_web_task:
+            agent = self.find_agent_for_task("web")
+            pretty_print(f"Pencarian web terdeteksi -> {agent.agent_name}", color="info")
+            self.logger.info(f"Web search task detected by keyword, routing to {agent.agent_name}")
+            return agent
+
+        if is_code_task:
             agent = self.find_agent_for_task("code")
             pretty_print(f"Tugas koding terdeteksi -> {agent.agent_name}", color="info")
             self.logger.info(f"Code task detected by keyword, routing to {agent.agent_name}")

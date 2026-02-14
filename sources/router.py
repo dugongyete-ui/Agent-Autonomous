@@ -194,6 +194,14 @@ class AgentRouter:
             ("buat game snake python", "LOW"),
             ("buat halaman web sederhana", "LOW"),
             ("buatkan script python sederhana", "LOW"),
+            ("buatkan saya website profil portfolio", "LOW"),
+            ("buat website portfolio saya", "LOW"),
+            ("buatkan website toko online", "LOW"),
+            ("buat landing page modern", "LOW"),
+            ("buatkan website profil profolio", "LOW"),
+            ("buatkan saya website blog", "LOW"),
+            ("buat website dashboard admin", "LOW"),
+            ("buatkan form login register", "LOW"),
             ("buatkan website dan cari referensi online lalu deploy", "HIGH"),
         ]
         random.shuffle(few_shots)
@@ -422,26 +430,35 @@ class AgentRouter:
             return None
 
         text_lower = text.lower()
-        code_keywords = [
-            'buatkan kode', 'buat kode', 'buatkan website', 'buat website',
-            'buatkan program', 'buat program', 'buatkan script', 'buat script',
-            'buatkan aplikasi', 'buat aplikasi', 'buatkan game', 'buat game',
-            'buatkan api', 'buat api', 'buatkan bot', 'buat bot',
-            'buatkan web', 'buat web server', 'buatkan halaman',
-            'coding', 'write code', 'create website', 'make a website',
-            'build a website', 'create a web', 'make a web app',
-            'write a script', 'create a program', 'build an app',
-            'buat form', 'buatkan form', 'buat landing page',
-            'buatkan landing page'
+        words = set(text_lower.split())
+
+        action_words = {'buatkan', 'buat', 'bikin', 'bikinkan', 'tolong', 'coba',
+                        'create', 'make', 'build', 'write', 'develop', 'code', 'coding',
+                        'design', 'generate', 'implement', 'setup'}
+        code_target_words = {'website', 'web', 'halaman', 'page', 'landing', 'html',
+                             'program', 'script', 'aplikasi', 'app', 'game', 'bot',
+                             'api', 'server', 'backend', 'frontend', 'fullstack',
+                             'kalkulator', 'calculator', 'form', 'login', 'dashboard',
+                             'portfolio', 'profil', 'profile', 'profolio', 'portofolio',
+                             'toko', 'shop', 'ecommerce', 'blog', 'cms', 'crud',
+                             'database', 'chat', 'todo', 'todolist', 'to-do'}
+        code_phrase_keywords = [
+            'coding', 'write code', 'tulis kode', 'debug', 'perbaiki kode',
+            'fix code', 'fix error', 'perbaiki error'
         ]
+
+        has_action = bool(words & action_words)
+        has_target = bool(words & code_target_words)
+        has_phrase = any(kw in text_lower for kw in code_phrase_keywords)
+
         web_search_keywords = [
             'cari di internet', 'cari di web', 'browse', 'search online',
             'cari informasi', 'cari berita', 'cari harga', 'cari referensi',
             'search the web', 'find online', 'look up'
         ]
-
-        is_code_task = any(kw in text_lower for kw in code_keywords)
         is_web_task = any(kw in text_lower for kw in web_search_keywords)
+
+        is_code_task = (has_action and has_target) or has_phrase
 
         if is_code_task and not is_web_task:
             agent = self.find_agent_for_task("code")

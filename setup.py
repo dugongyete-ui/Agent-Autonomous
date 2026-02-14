@@ -4,11 +4,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="agenticSeek",
+    name="agent-dzeckai",
     version="0.1.0",
     author="Fosowl",
     author_email="mlg.fcu@gmail.com",
-    description="The open, local alternative to ManusAI",
+    description="Agent-DzeckAi - AI Agent Full-Stack",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Fosowl/agenticSeek",
@@ -67,7 +67,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "agenticseek=main:main",
+            "agent-dzeckai=main:main",
         ],
     },
     classifiers=[

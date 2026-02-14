@@ -68,6 +68,11 @@ if not os.path.exists(".screenshots"):
     os.makedirs(".screenshots")
 api.mount("/screenshots", StaticFiles(directory=".screenshots"), name="screenshots")
 
+work_dir_path = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+if not os.path.exists(work_dir_path):
+    os.makedirs(work_dir_path, exist_ok=True)
+    print(f"[Agent Dzeck AI] Created work directory: {work_dir_path}")
+
 def initialize_system():
     stealth_mode = config.getboolean('BROWSER', 'stealth_mode')
     personality_folder = "jarvis" if config.getboolean('MAIN', 'jarvis_personality') else "base"
@@ -181,10 +186,12 @@ async def is_active():
 
 @api.get("/stop")
 async def stop():
+    global is_generating
     logger.info("Stop endpoint called")
     if interaction is None or interaction.current_agent is None:
         return JSONResponse(status_code=503, content={"error": "System not initialized"})
     interaction.current_agent.request_stop()
+    is_generating = False
     return JSONResponse(status_code=200, content={"status": "stopped"})
 
 @api.post("/new_chat")
@@ -194,12 +201,20 @@ async def new_chat():
     is_generating = False
     query_resp_history = []
     if interaction is not None:
+        if config.getboolean('MAIN', 'save_session'):
+            interaction.save_session()
         interaction.last_answer = None
         interaction.last_reasoning = None
         interaction.last_query = None
         interaction.current_agent = None
         for agent in interaction.agents:
             agent.memory.reset()
+            agent.blocks_result = []
+            agent.stop = False
+            agent.success = True
+            agent.last_answer = ""
+            agent.last_reasoning = ""
+            agent.status_message = "Siap"
     return JSONResponse(status_code=200, content={"status": "new_chat_created"})
 
 @api.post("/clear_history")
@@ -208,11 +223,18 @@ async def clear_history():
     logger.info("Clear history endpoint called")
     query_resp_history = []
     if interaction is not None:
+        if config.getboolean('MAIN', 'save_session'):
+            interaction.save_session()
         interaction.last_answer = None
         interaction.last_reasoning = None
         interaction.last_query = None
         for agent in interaction.agents:
             agent.memory.reset()
+            agent.blocks_result = []
+            agent.stop = False
+            agent.success = True
+            agent.last_answer = ""
+            agent.last_reasoning = ""
     return JSONResponse(status_code=200, content={"status": "history_cleared"})
 
 @api.get("/latest_answer")
@@ -353,6 +375,7 @@ async def process_query(request: QueryRequest):
         query_resp.done = "true"
         return JSONResponse(status_code=200, content=query_resp.jsonify())
     finally:
+        is_generating = False
         logger.info("Processing finished")
         if config.getboolean('MAIN', 'save_session'):
             interaction.save_session()

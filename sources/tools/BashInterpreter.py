@@ -40,6 +40,8 @@ class BashInterpreter(Tools):
             return "Command rejected by user."
     
         concat_output = ""
+        if self.work_dir and not os.path.exists(self.work_dir):
+            os.makedirs(self.work_dir, exist_ok=True)
         for command in commands:
             command = f"cd {self.work_dir} && {command}"
             command = command.replace('\n', '')

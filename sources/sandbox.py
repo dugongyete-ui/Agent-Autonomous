@@ -140,6 +140,8 @@ class SafeExecutor:
                  max_memory_mb: int = 512,
                  block_network: bool = False):
         self.work_dir = work_dir or os.getcwd()
+        if self.work_dir and not os.path.exists(self.work_dir):
+            os.makedirs(self.work_dir, exist_ok=True)
         self.timeout = timeout
         self.max_memory_mb = max_memory_mb
         self.block_network = block_network

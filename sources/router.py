@@ -190,6 +190,11 @@ class AgentRouter:
             ("Search the web for tutorials on web development and build a sample site", "HIGH"),
             ("Create a Node.js app to query a public API for event listings and display them", "HIGH"),
             ("Find a file named 'budget.xlsx', analyze its data, and generate a chart", "HIGH"),
+            ("buatkan website kalkulator", "LOW"),
+            ("buat game snake python", "LOW"),
+            ("buat halaman web sederhana", "LOW"),
+            ("buatkan script python sederhana", "LOW"),
+            ("buatkan website dan cari referensi online lalu deploy", "HIGH"),
         ]
         random.shuffle(few_shots)
         texts = [text for text, _ in few_shots]
@@ -342,6 +347,30 @@ class AgentRouter:
             ("can you find research.pdf in my drive", "files"),
             ("hi", "talk"),
             ("hello", "talk"),
+            ("buatkan website kalkulator", "code"),
+            ("buat website portfolio", "code"),
+            ("buatkan aplikasi web todo list", "code"),
+            ("buat halaman web sederhana", "code"),
+            ("buatkan kode website landing page", "code"),
+            ("buat program python", "code"),
+            ("buatkan script untuk download file", "code"),
+            ("buat game snake dengan python", "code"),
+            ("buatkan API dengan flask", "code"),
+            ("buat website e-commerce", "code"),
+            ("buatkan bot telegram", "code"),
+            ("buat website dengan HTML CSS JavaScript", "code"),
+            ("buatkan web server golang", "code"),
+            ("coding website chat", "code"),
+            ("buat form login HTML", "code"),
+            ("halo apa kabar", "talk"),
+            ("siapa kamu", "talk"),
+            ("ceritakan lelucon", "talk"),
+            ("cari informasi tentang AI", "web"),
+            ("cari berita terbaru", "web"),
+            ("cari harga laptop murah", "web"),
+            ("temukan file bernama data.csv", "files"),
+            ("cari file laporan.pdf di drive", "files"),
+            ("buat folder baru bernama proyek", "files"),
         ]
         random.shuffle(few_shots)
         texts = [text for text, _ in few_shots]
@@ -391,6 +420,34 @@ class AgentRouter:
     def select_agent(self, text: str) -> Agent:
         if text is None or len(text.strip()) == 0:
             return None
+
+        text_lower = text.lower()
+        code_keywords = [
+            'buatkan kode', 'buat kode', 'buatkan website', 'buat website',
+            'buatkan program', 'buat program', 'buatkan script', 'buat script',
+            'buatkan aplikasi', 'buat aplikasi', 'buatkan game', 'buat game',
+            'buatkan api', 'buat api', 'buatkan bot', 'buat bot',
+            'buatkan web', 'buat web server', 'buatkan halaman',
+            'coding', 'write code', 'create website', 'make a website',
+            'build a website', 'create a web', 'make a web app',
+            'write a script', 'create a program', 'build an app',
+            'buat form', 'buatkan form', 'buat landing page',
+            'buatkan landing page'
+        ]
+        web_search_keywords = [
+            'cari di internet', 'cari di web', 'browse', 'search online',
+            'cari informasi', 'cari berita', 'cari harga', 'cari referensi',
+            'search the web', 'find online', 'look up'
+        ]
+
+        is_code_task = any(kw in text_lower for kw in code_keywords)
+        is_web_task = any(kw in text_lower for kw in web_search_keywords)
+
+        if is_code_task and not is_web_task:
+            agent = self.find_agent_for_task("code")
+            pretty_print(f"Tugas koding terdeteksi -> {agent.agent_name}", color="info")
+            self.logger.info(f"Code task detected by keyword, routing to {agent.agent_name}")
+            return agent
 
         task_type, confidence = self.llm_router(text)
         self.logger.info(f"Task classified as '{task_type}' with confidence {confidence:.2f}")

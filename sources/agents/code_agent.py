@@ -100,7 +100,7 @@ class CoderAgent(Agent):
     async def process(self, prompt, speech_module) -> str:
         answer = ""
         attempt = 0
-        max_attempts = 5
+        max_attempts = 7
         prompt = self.add_sys_info_prompt(prompt)
         self.memory.push('user', prompt)
         clarify_trigger = "REQUEST_CLARIFICATION"
@@ -116,6 +116,10 @@ class CoderAgent(Agent):
                 await asyncio.sleep(0)
                 return answer, reasoning
             if not "```" in answer:
+                if any(kw in prompt.lower() for kw in ['buatkan', 'buat ', 'create', 'make', 'write', 'build', 'coding']):
+                    self.memory.push('user', 'Kamu belum menulis kode. Tulis kode LENGKAP sekarang dalam blok ``` yang sesuai. Jangan jelaskan, langsung tulis kode.')
+                    attempt += 1
+                    continue
                 self.last_answer = answer
                 await asyncio.sleep(0)
                 break

@@ -48,17 +48,6 @@ def is_running_in_docker():
     return False
 
 
-try:
-    from celery import Celery
-    celery_app = None
-    try:
-        celery_app = Celery("tasks", broker="redis://localhost:6379/0", backend="redis://localhost:6379/0")
-        celery_app.conf.update(task_track_started=True)
-    except Exception:
-        celery_app = None
-except ImportError:
-    celery_app = None
-
 api = FastAPI(title="Agent Dzeck AI API", version="0.1.0")
 logger = Logger("backend.log")
 config = configparser.ConfigParser()

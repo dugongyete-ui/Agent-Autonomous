@@ -31,14 +31,11 @@ sentencepiece>=0.2.0
 scipy>=1.9.3
 protobuf>=3.20.3
 adaptive-classifier>=0.0.10
-together>=1.5.0
 certifi>=2025.4.26
 setuptools>=75.6.0
 sacremoses
 safetensors
 scikit-learn
-text2emotion
-celery
 huggingface-hub
 tokenizers
 rich
@@ -46,5 +43,3 @@ emoji
 nltk
 regex
 pillow
-ollama
-protobuf

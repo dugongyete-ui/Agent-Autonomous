@@ -5,7 +5,6 @@ echo "  Agent Dzeck AI - Auto Install Dependencies"
 echo "============================================"
 echo ""
 
-TIMEOUT_PIP=180
 FAILED_PACKAGES=()
 SUCCESS_COUNT=0
 FAIL_COUNT=0
@@ -17,35 +16,25 @@ check_command() {
 install_pkg() {
   local pkg="$1"
   local extra_args="$2"
-  echo "  Installing $pkg..."
+  echo -n "  Installing $pkg... "
   if [ -n "$extra_args" ]; then
-    timeout $TIMEOUT_PIP python3 -m pip install --no-cache-dir -q $extra_args "$pkg" 2>/dev/null
+    pip install --break-system-packages --no-cache-dir -q $extra_args "$pkg" 2>&1 | tail -1
   else
-    timeout $TIMEOUT_PIP python3 -m pip install --no-cache-dir -q "$pkg" 2>/dev/null
+    pip install --break-system-packages --no-cache-dir -q "$pkg" 2>&1 | tail -1
   fi
-  if [ $? -eq 0 ]; then
-    echo "    -> OK"
+  if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    echo "OK"
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     return 0
   else
-    echo "    -> FAILED: $pkg"
+    echo "FAILED"
     FAILED_PACKAGES+=("$pkg")
     FAIL_COUNT=$((FAIL_COUNT + 1))
     return 1
   fi
 }
 
-install_pkg_silent() {
-  local pkg="$1"
-  local extra_args="$2"
-  if [ -n "$extra_args" ]; then
-    timeout $TIMEOUT_PIP python3 -m pip install --no-cache-dir -q $extra_args "$pkg" 2>/dev/null
-  else
-    timeout $TIMEOUT_PIP python3 -m pip install --no-cache-dir -q "$pkg" 2>/dev/null
-  fi
-}
-
-echo "[1/7] Checking Python..."
+echo "[1/6] Checking Python..."
 if check_command python3; then
   PYTHON=python3
 elif check_command python; then
@@ -55,14 +44,15 @@ else
   exit 1
 fi
 echo "  -> $($PYTHON --version)"
+echo "  -> pip: $(pip --version 2>/dev/null || echo 'not found')"
 
 echo ""
-echo "[2/7] Upgrading pip & setuptools..."
-$PYTHON -m pip install --upgrade pip setuptools wheel 2>/dev/null
+echo "[2/6] Upgrading pip & setuptools..."
+pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null
 echo "  -> Done"
 
 echo ""
-echo "[3/7] Installing Core packages..."
+echo "[3/6] Installing Core packages..."
 
 CORE_PACKAGES=(
   "fastapi"
@@ -106,7 +96,7 @@ done
 echo "  -> Core done."
 
 echo ""
-echo "[4/7] Installing Browser packages..."
+echo "[4/6] Installing Browser packages..."
 
 BROWSER_PACKAGES=(
   "selenium"
@@ -124,17 +114,17 @@ done
 echo "  -> Browser done."
 
 echo ""
-echo "[5/7] Installing ML packages (this may take several minutes)..."
+echo "[5/6] Installing ML & Provider packages..."
 
 echo "  Installing PyTorch (CPU)..."
-timeout 600 $PYTHON -m pip install --no-cache-dir -q torch --index-url https://download.pytorch.org/whl/cpu 2>/dev/null
-if [ $? -eq 0 ]; then
+pip install --break-system-packages --no-cache-dir -q torch --index-url https://download.pytorch.org/whl/cpu 2>&1 | tail -1
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
   echo "    -> PyTorch OK"
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 else
-  echo "    -> PyTorch FAILED (will retry with default index)"
-  timeout 600 $PYTHON -m pip install --no-cache-dir -q torch 2>/dev/null
-  if [ $? -eq 0 ]; then
+  echo "    -> PyTorch FAILED (trying default index)"
+  pip install --break-system-packages --no-cache-dir -q torch 2>&1 | tail -1
+  if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "    -> PyTorch OK (fallback)"
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
   else
@@ -159,41 +149,10 @@ ML_PACKAGES=(
 for pkg in "${ML_PACKAGES[@]}"; do
   install_pkg "$pkg"
 done
-echo "  -> ML done."
+echo "  -> ML & Provider done."
 
 echo ""
-echo "[6/7] Installing LLM Provider packages..."
-
-LLM_PROVIDER_PACKAGES=(
-  "together"
-  "ollama"
-  "huggingface-hub"
-  "celery"
-)
-
-for pkg in "${LLM_PROVIDER_PACKAGES[@]}"; do
-  install_pkg "$pkg"
-done
-
-OPTIONAL_PACKAGES=(
-  "text2emotion"
-  "soundfile"
-)
-
-for pkg in "${OPTIONAL_PACKAGES[@]}"; do
-  echo "  Installing $pkg (optional)..."
-  install_pkg_silent "$pkg"
-  if [ $? -eq 0 ]; then
-    echo "    -> OK"
-    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-  else
-    echo "    -> SKIP (optional)"
-  fi
-done
-echo "  -> Provider & optional done."
-
-echo ""
-echo "[7/7] Verifying critical modules..."
+echo "[6/6] Verifying critical modules..."
 $PYTHON << 'PYEOF'
 import importlib
 modules = {
@@ -202,13 +161,13 @@ modules = {
     'openai': 'OpenAI', 'torch': 'PyTorch', 'transformers': 'Transformers',
     'adaptive_classifier': 'AdaptiveClassifier', 'selenium': 'Selenium',
     'langid': 'LangID', 'scipy': 'SciPy', 'sentencepiece': 'SentencePiece',
-    'safetensors': 'SafeTensors', 'PIL': 'Pillow', 'together': 'Together',
+    'safetensors': 'SafeTensors', 'PIL': 'Pillow',
     'pydantic': 'Pydantic', 'dotenv': 'python-dotenv', 'aiofiles': 'AioFiles',
     'markdownify': 'Markdownify', 'colorama': 'Colorama', 'termcolor': 'Termcolor',
     'tqdm': 'TQDM', 'huggingface_hub': 'HuggingFace Hub',
     'sklearn': 'Scikit-Learn', 'tokenizers': 'Tokenizers', 'rich': 'Rich',
     'emoji': 'Emoji', 'nltk': 'NLTK', 'regex': 'Regex',
-    'celery': 'Celery', 'sacremoses': 'Sacremoses', 'ollama': 'Ollama',
+    'sacremoses': 'Sacremoses',
     'pypdf': 'PyPDF', 'IPython': 'IPython', 'ordered_set': 'OrderedSet',
 }
 ok = 0
@@ -217,7 +176,6 @@ for mod, name in modules.items():
     try:
         importlib.import_module(mod)
         ok += 1
-        print(f'  [OK] {name}')
     except ImportError:
         fail += 1
         print(f'  [MISSING] {name}')

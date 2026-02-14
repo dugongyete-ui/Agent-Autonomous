@@ -32,22 +32,49 @@ class BashInterpreter(Tools):
                 return True
         return False
 
-    def is_package_install_command(self, command: str) -> bool:
+    def is_system_level_install_command(self, command: str) -> bool:
         """
-        Detect if AI is trying to install packages via bash.
-        These commands should be skipped as packages are managed by the system.
+        Detect if AI is trying to install packages via system-level package managers.
+        These commands should be blocked as they can modify system configuration.
         """
-        install_patterns = [
-            "pip install", "pip3 install", "pip3 install",
-            "npm install", "npm i ", "yarn add", "yarn install",
+        dangerous_patterns = [
             "apt install", "apt-get install", "apt update", "apt-get update",
             "brew install", "conda install",
         ]
         cmd_lower = command.lower().strip()
-        for pattern in install_patterns:
+        for pattern in dangerous_patterns:
             if pattern in cmd_lower:
                 return True
         return False
+    
+    def is_allowed_install_command(self, command: str) -> bool:
+        """
+        Detect if AI is using allowed package managers (pip, npm, yarn, npx).
+        These commands are safe and should be allowed to execute.
+        """
+        allowed_patterns = [
+            "pip install", "pip3 install",
+            "npm install", "npm i ",
+            "yarn add", "yarn install",
+            "npx ",
+        ]
+        cmd_lower = command.lower().strip()
+        for pattern in allowed_patterns:
+            if pattern in cmd_lower:
+                return True
+        return False
+    
+    def add_pip_safety_flag(self, command: str) -> str:
+        """
+        Add --break-system-packages flag to pip install commands for safety.
+        """
+        if "pip install" in command.lower() or "pip3 install" in command.lower():
+            # Check if flag already exists
+            if "--break-system-packages" not in command:
+                # Insert the flag after 'pip install' or 'pip3 install'
+                command = command.replace("pip install", "pip install --break-system-packages", 1)
+                command = command.replace("pip3 install", "pip3 install --break-system-packages", 1)
+        return command
     
     def execute(self, commands: str, safety=False, timeout=300):
         """
@@ -61,9 +88,16 @@ class BashInterpreter(Tools):
             os.makedirs(self.work_dir, exist_ok=True)
         for command in commands:
             raw_command = command.replace('\n', '').strip()
-            if self.is_package_install_command(raw_command):
-                concat_output += f"[skipped] Package install command skipped (packages are pre-installed): {raw_command}\n"
+            
+            # Block dangerous system-level package managers
+            if self.is_system_level_install_command(raw_command):
+                concat_output += f"[blocked] System-level install command blocked for safety: {raw_command}\n"
                 continue
+            
+            # Allow and enhance pip/npm/yarn/npx commands with safety flags
+            if self.is_allowed_install_command(raw_command):
+                raw_command = self.add_pip_safety_flag(raw_command)
+            
             command = f"cd {self.work_dir} && {raw_command}"
             if self.safe_mode and is_any_unsafe(commands):
                 print(f"Unsafe command rejected: {command}")

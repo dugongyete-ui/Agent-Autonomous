@@ -29,10 +29,6 @@ DANGEROUS_PATTERNS = [
     r'\bcompile\s*\(',
     r'\bopen\s*\(.*/etc/',
     r'\bsocket\.\w+',
-    r'\burllib\.\w+',
-    r'\brequests\.\w+',
-    r'\bhttplib\b',
-    r'\bhttp\.client\b',
     r'\bctypes\b',
     r'\bsignal\.SIG',
     r'\bsys\.exit\b',
@@ -40,6 +36,18 @@ DANGEROUS_PATTERNS = [
     r'\bPickle\b',
     r'\bpickle\.loads\b',
     r'\bmarshall\b',
+]
+
+ALLOWED_PYTHON_MODULES = [
+    'math', 'random', 'datetime', 'json', 'csv', 'collections',
+    'itertools', 'functools', 'string', 're', 'os.path',
+    'pathlib', 'typing', 'dataclasses', 'enum', 'abc',
+    'flask', 'fastapi', 'jinja2', 'markdownify',
+    'numpy', 'beautifulsoup4', 'bs4', 'requests',
+    'html', 'xml', 'sqlite3', 'hashlib', 'base64',
+    'uuid', 'time', 'calendar', 'decimal', 'fractions',
+    'statistics', 'textwrap', 'unicodedata', 'io',
+    'copy', 'pprint', 'operator', 'contextlib',
 ]
 
 DANGEROUS_BASH_PATTERNS = [
@@ -74,6 +82,17 @@ DANGEROUS_BASH_PATTERNS = [
     r'\bsudo\b',
     r'\bsu\s+',
     r'\bchroot\b',
+]
+
+ALLOWED_BASH_COMMANDS = [
+    'ls', 'cat', 'echo', 'pwd', 'mkdir', 'touch', 'cp', 'mv',
+    'find', 'grep', 'head', 'tail', 'wc', 'sort', 'uniq',
+    'sed', 'awk', 'tr', 'cut', 'paste', 'tee',
+    'tar', 'gzip', 'gunzip', 'zip', 'unzip',
+    'curl', 'wget', 'python3', 'python', 'node', 'npm', 'npx',
+    'git', 'which', 'whoami', 'date', 'env', 'export',
+    'chmod', 'cd', 'tree', 'diff', 'patch',
+    'pip', 'pip3', 'yarn',
 ]
 
 DANGEROUS_JS_PATTERNS = [
@@ -120,6 +139,12 @@ LANGUAGE_CONFIG = {
 
 MAX_OUTPUT_LENGTH = 50000
 
+RESTRICTED_PATHS = [
+    '/etc/passwd', '/etc/shadow', '/etc/sudoers',
+    '/root', '/proc', '/sys',
+    '/home/runner/.config',
+]
+
 
 @dataclass
 class SandboxResult:
@@ -136,15 +161,17 @@ class SandboxResult:
 
 class SafeExecutor:
     def __init__(self, work_dir: Optional[str] = None,
-                 timeout: int = 30,
-                 max_memory_mb: int = 512,
-                 block_network: bool = False):
+                 timeout: int = 60,
+                 max_memory_mb: int = 1024,
+                 block_network: bool = False,
+                 isolation_mode: str = "workspace"):
         self.work_dir = work_dir or os.getcwd()
         if self.work_dir and not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir, exist_ok=True)
         self.timeout = timeout
         self.max_memory_mb = max_memory_mb
         self.block_network = block_network
+        self.isolation_mode = isolation_mode
         self.logger = Logger("sandbox.log")
 
     def _set_resource_limits(self):
@@ -160,7 +187,21 @@ class SafeExecutor:
             return truncated, True
         return text, False
 
+    def _check_path_safety(self, code: str) -> tuple:
+        for restricted in RESTRICTED_PATHS:
+            if restricted in code:
+                return False, f"Access to restricted path blocked: {restricted}"
+        if self.isolation_mode == "workspace":
+            parent_traversal = re.findall(r'\.\./\.\./\.\./', code)
+            if parent_traversal:
+                return False, "Path traversal beyond workspace detected"
+        return True, ""
+
     def validate_code(self, code: str, language: str) -> tuple:
+        path_safe, path_reason = self._check_path_safety(code)
+        if not path_safe:
+            return False, path_reason
+
         config = LANGUAGE_CONFIG.get(language)
         if not config:
             return True, ""
@@ -371,18 +412,21 @@ class SafeExecutor:
 
 class Sandbox:
     def __init__(self, work_dir: Optional[str] = None,
-                 timeout: int = 30,
-                 max_memory_mb: int = 512,
-                 block_network: bool = False):
+                 timeout: int = 60,
+                 max_memory_mb: int = 1024,
+                 block_network: bool = False,
+                 isolation_mode: str = "workspace"):
         self.work_dir = work_dir or os.getcwd()
         self.timeout = timeout
         self.max_memory_mb = max_memory_mb
         self.block_network = block_network
+        self.isolation_mode = isolation_mode
         self.executor = SafeExecutor(
             work_dir=self.work_dir,
             timeout=self.timeout,
             max_memory_mb=self.max_memory_mb,
-            block_network=self.block_network
+            block_network=self.block_network,
+            isolation_mode=self.isolation_mode,
         )
         self.execution_history: List[tuple] = []
         self.logger = Logger("sandbox.log")

@@ -9,50 +9,47 @@ FAILED_PACKAGES=()
 SUCCESS_COUNT=0
 FAIL_COUNT=0
 
+PIP_FLAGS="--break-system-packages --no-cache-dir"
+
 check_command() {
   command -v "$1" >/dev/null 2>&1
 }
 
 install_pkg() {
   local pkg="$1"
-  local extra_args="$2"
-  echo -n "  Installing $pkg... "
-  if [ -n "$extra_args" ]; then
-    pip install --break-system-packages --no-cache-dir -q $extra_args "$pkg" 2>&1 | tail -1
-  else
-    pip install --break-system-packages --no-cache-dir -q "$pkg" 2>&1 | tail -1
-  fi
-  if [ ${PIPESTATUS[0]} -eq 0 ]; then
+  echo -n "  [$((SUCCESS_COUNT + FAIL_COUNT + 1))] $pkg ... "
+  pip install $PIP_FLAGS -q "$pkg" >/dev/null 2>&1
+  local status=$?
+  if [ $status -eq 0 ]; then
     echo "OK"
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-    return 0
   else
-    echo "FAILED"
+    echo "GAGAL"
     FAILED_PACKAGES+=("$pkg")
     FAIL_COUNT=$((FAIL_COUNT + 1))
-    return 1
   fi
+  return $status
 }
 
-echo "[1/6] Checking Python..."
+echo "[1/6] Mengecek Python..."
 if check_command python3; then
   PYTHON=python3
 elif check_command python; then
   PYTHON=python
 else
-  echo "  ERROR: Python not found."
+  echo "  ERROR: Python tidak ditemukan!"
   exit 1
 fi
 echo "  -> $($PYTHON --version)"
-echo "  -> pip: $(pip --version 2>/dev/null || echo 'not found')"
+echo "  -> pip: $(pip --version 2>/dev/null | head -1 || echo 'tidak ditemukan')"
 
 echo ""
-echo "[2/6] Upgrading pip & setuptools..."
-pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null
-echo "  -> Done"
+echo "[2/6] Upgrade pip & setuptools..."
+pip install $PIP_FLAGS --upgrade pip setuptools wheel >/dev/null 2>&1
+echo "  -> Selesai"
 
 echo ""
-echo "[3/6] Installing Core packages..."
+echo "[3/6] Install paket Core..."
 
 CORE_PACKAGES=(
   "fastapi"
@@ -78,8 +75,6 @@ CORE_PACKAGES=(
   "ipython"
   "anyio"
   "jiter"
-  "setuptools"
-  "wheel"
   "protobuf"
   "ordered-set"
   "rich"
@@ -93,10 +88,10 @@ CORE_PACKAGES=(
 for pkg in "${CORE_PACKAGES[@]}"; do
   install_pkg "$pkg"
 done
-echo "  -> Core done."
+echo "  -> Core selesai."
 
 echo ""
-echo "[4/6] Installing Browser packages..."
+echo "[4/6] Install paket Browser..."
 
 BROWSER_PACKAGES=(
   "selenium"
@@ -111,24 +106,24 @@ BROWSER_PACKAGES=(
 for pkg in "${BROWSER_PACKAGES[@]}"; do
   install_pkg "$pkg"
 done
-echo "  -> Browser done."
+echo "  -> Browser selesai."
 
 echo ""
-echo "[5/6] Installing ML & Provider packages..."
+echo "[5/6] Install paket ML & AI Provider..."
 
 echo "  Installing PyTorch (CPU)..."
-pip install --break-system-packages --no-cache-dir -q torch --index-url https://download.pytorch.org/whl/cpu 2>&1 | tail -1
-if [ ${PIPESTATUS[0]} -eq 0 ]; then
-  echo "    -> PyTorch OK"
+pip install $PIP_FLAGS -q torch --index-url https://download.pytorch.org/whl/cpu >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  echo "  -> PyTorch OK"
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 else
-  echo "    -> PyTorch FAILED (trying default index)"
-  pip install --break-system-packages --no-cache-dir -q torch 2>&1 | tail -1
-  if [ ${PIPESTATUS[0]} -eq 0 ]; then
-    echo "    -> PyTorch OK (fallback)"
+  echo "  -> PyTorch gagal dari CPU index, coba default..."
+  pip install $PIP_FLAGS -q torch >/dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    echo "  -> PyTorch OK (fallback)"
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
   else
-    echo "    -> PyTorch FAILED"
+    echo "  -> PyTorch GAGAL"
     FAILED_PACKAGES+=("torch")
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
@@ -149,64 +144,97 @@ ML_PACKAGES=(
 for pkg in "${ML_PACKAGES[@]}"; do
   install_pkg "$pkg"
 done
-echo "  -> ML & Provider done."
+echo "  -> ML & Provider selesai."
 
 echo ""
-echo "[6/6] Verifying critical modules..."
+echo "[6/6] Verifikasi semua modul..."
 $PYTHON << 'PYEOF'
 import importlib
+
 modules = {
-    'fastapi': 'FastAPI', 'uvicorn': 'Uvicorn', 'requests': 'Requests',
-    'httpx': 'HTTPX', 'bs4': 'BeautifulSoup4', 'numpy': 'NumPy',
-    'openai': 'OpenAI', 'torch': 'PyTorch', 'transformers': 'Transformers',
-    'adaptive_classifier': 'AdaptiveClassifier', 'selenium': 'Selenium',
-    'langid': 'LangID', 'scipy': 'SciPy', 'sentencepiece': 'SentencePiece',
-    'safetensors': 'SafeTensors', 'PIL': 'Pillow',
-    'pydantic': 'Pydantic', 'dotenv': 'python-dotenv', 'aiofiles': 'AioFiles',
-    'markdownify': 'Markdownify', 'colorama': 'Colorama', 'termcolor': 'Termcolor',
-    'tqdm': 'TQDM', 'huggingface_hub': 'HuggingFace Hub',
-    'sklearn': 'Scikit-Learn', 'tokenizers': 'Tokenizers', 'rich': 'Rich',
-    'emoji': 'Emoji', 'nltk': 'NLTK', 'regex': 'Regex',
+    'fastapi': 'FastAPI',
+    'uvicorn': 'Uvicorn',
+    'requests': 'Requests',
+    'httpx': 'HTTPX',
+    'bs4': 'BeautifulSoup4',
+    'numpy': 'NumPy',
+    'openai': 'OpenAI',
+    'torch': 'PyTorch',
+    'transformers': 'Transformers',
+    'adaptive_classifier': 'AdaptiveClassifier',
+    'selenium': 'Selenium',
+    'langid': 'LangID',
+    'scipy': 'SciPy',
+    'sentencepiece': 'SentencePiece',
+    'safetensors': 'SafeTensors',
+    'PIL': 'Pillow',
+    'pydantic': 'Pydantic',
+    'dotenv': 'python-dotenv',
+    'aiofiles': 'AioFiles',
+    'markdownify': 'Markdownify',
+    'colorama': 'Colorama',
+    'termcolor': 'Termcolor',
+    'tqdm': 'TQDM',
+    'huggingface_hub': 'HuggingFace Hub',
+    'sklearn': 'Scikit-Learn',
+    'tokenizers': 'Tokenizers',
+    'rich': 'Rich',
+    'emoji': 'Emoji',
+    'nltk': 'NLTK',
+    'regex': 'Regex',
     'sacremoses': 'Sacremoses',
-    'pypdf': 'PyPDF', 'IPython': 'IPython', 'ordered_set': 'OrderedSet',
+    'pypdf': 'PyPDF',
+    'IPython': 'IPython',
+    'ordered_set': 'OrderedSet',
 }
+
 ok = 0
 fail = 0
 for mod, name in modules.items():
     try:
         importlib.import_module(mod)
+        print(f'  [OK] {name}')
         ok += 1
     except ImportError:
-        fail += 1
         print(f'  [MISSING] {name}')
-print(f'\n  -> {ok}/{ok+fail} modules verified')
+        fail += 1
+
+print(f'\n  Hasil: {ok}/{ok+fail} modul terverifikasi')
 if fail > 0:
-    print(f'  -> {fail} modules missing (may need manual install)')
+    print(f'  PERINGATAN: {fail} modul belum terinstall')
 else:
-    print('  -> All critical modules installed!')
+    print('  SUKSES: Semua modul terinstall!')
 PYEOF
 
 echo ""
 echo "============================================"
+echo "  RINGKASAN INSTALASI"
+echo "============================================"
+
 if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
-  echo "  WARNING: ${FAIL_COUNT} packages failed to install:"
+  echo ""
+  echo "  PERINGATAN: ${FAIL_COUNT} paket gagal install:"
   for pkg in "${FAILED_PACKAGES[@]}"; do
     echo "    - $pkg"
   done
-  echo ""
 fi
-echo "  ${SUCCESS_COUNT} packages installed successfully"
+
+echo ""
+echo "  Total: $((SUCCESS_COUNT + FAIL_COUNT)) paket diproses"
+echo "  Berhasil: ${SUCCESS_COUNT}"
+echo "  Gagal: ${FAIL_COUNT}"
 echo ""
 
 if [ -f "config.ini" ]; then
   echo "  config.ini: OK"
 else
-  echo "  WARNING: config.ini missing!"
+  echo "  PERINGATAN: config.ini tidak ditemukan!"
 fi
 
 WORK_DIR=$(grep "work_dir" config.ini 2>/dev/null | cut -d'=' -f2 | tr -d ' ')
 if [ -n "$WORK_DIR" ]; then
   mkdir -p "$WORK_DIR" 2>/dev/null
+  echo "  work_dir ($WORK_DIR): OK"
 fi
 
 echo ""

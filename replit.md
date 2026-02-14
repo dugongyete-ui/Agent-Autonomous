@@ -55,16 +55,17 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
-- 2026-02-14: MAJOR FIX - Router keyword override: tugas koding ("buatkan website", "buat program") langsung ke code agent
-- 2026-02-14: MAJOR FIX - Coder agent prompt diperkuat: instruksi eksplisit tulis kode lengkap tanpa cari referensi
-- 2026-02-14: MAJOR FIX - Code agent auto-fix: jika AI tidak menulis kode, sistem otomatis meminta AI menulis kode
-- 2026-02-14: MAJOR FIX - Max attempts dinaikkan dari 5 ke 7
-- 2026-02-14: CLEANUP - Hapus semua provider kecuali Groq dan HuggingFace dari llm_provider.py
-- 2026-02-14: CLEANUP - Hapus celery import dari api.py
-- 2026-02-14: CLEANUP - Update requirements.txt (hapus together, ollama, celery)
-- 2026-02-14: FIX - setup_dependencies.sh diperbaiki dengan --break-system-packages, error handling lebih baik
-- 2026-02-14: 25 few-shot examples bahasa Indonesia ditambahkan ke router
-- 2026-02-14: Router keyword override mendeteksi 30+ kata kunci koding Indonesia dan Inggris
+- 2026-02-14: UPGRADE - Auto-debugging diperkuat: debug prompt terstruktur dengan analisis error detail
+- 2026-02-14: UPGRADE - Status message real-time dalam bahasa Indonesia (Berpikir, Menjalankan kode, Auto-debugging)
+- 2026-02-14: UPGRADE - No-code retry limit (max 2x) mencegah infinite loop jika AI tidak menulis kode
+- 2026-02-14: UPGRADE - Keyword detection diperluas (30+ kata kunci koding ID/EN)
+- 2026-02-14: FEATURE - Download ZIP: /api/download-zip endpoint, tombol "Unduh .ZIP" di sidebar
+- 2026-02-14: FEATURE - CSS styles untuk download button (hijau gradient)
+- 2026-02-14: FIX - HuggingFace 402 error handling dengan retry dan model fallback
+- 2026-02-14: MAJOR FIX - Router keyword override: tugas koding langsung ke code agent
+- 2026-02-14: MAJOR FIX - Coder agent prompt diperkuat: instruksi eksplisit tulis kode lengkap
+- 2026-02-14: CLEANUP - Hapus semua provider kecuali Groq dan HuggingFace
+- 2026-02-14: CLEANUP - Hapus celery, together, ollama dari dependencies
 
 ## Running
 - Workflow "Start application" runs `python api.py`

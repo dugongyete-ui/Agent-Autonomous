@@ -60,7 +60,7 @@ class CoderAgent(Agent):
             f"Environment: Server headless (tanpa display/GUI)\n"
             f"Direktori kerja: {self.work_dir}\n"
             f"Library tersedia: flask, requests, beautifulsoup4, numpy, sqlite3, json, csv, dan library standar Python\n"
-            f"Package manager: pip install (auto --break-system-packages), npm install, yarn add (SEMUA DIIZINKAN)\n"
+            f"Package manager: pip install, npm install, yarn add (SEMUA DIIZINKAN)\n"
             f"\nMODE AUTONOMOUS FULL-STACK AKTIF:\n"
             f"- Kamu adalah AI Agent Autonomous Full-Stack Developer. LANGSUNG kerjakan tanpa bertanya.\n"
             f"- Kamu BISA install package: pip install, npm install, yarn add - semua diizinkan dan berjalan.\n"

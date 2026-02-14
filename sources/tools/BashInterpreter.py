@@ -135,33 +135,28 @@ class BashInterpreter(Tools):
         """
         check if bash command failed.
         """
+        if "failed with return code" in feedback:
+            return True
         error_patterns = [
-            r"expected",
-            r"errno",
-            r"failed",
-            r"invalid",
-            r"unrecognized",
-            r"exception",
-            r"syntax",
+            r"Traceback \(most recent call last\)",
+            r"errno \d+",
             r"segmentation fault",
             r"core dumped",
-            r"unexpected",
-            r"denied",
-            r"not recognized",
-            r"not permitted",
-            r"not installed",
-            r"not found",
-            r"aborted",
-            r"no such",
-            r"too many",
-            r"too few",
-            r"busy",
-            r"broken pipe",
-            r"missing",
-            r"undefined",
-            r"refused",
-            r"unreachable",
-            r"not known"
+            r"permission denied",
+            r"command not found",
+            r"no such file or directory",
+            r"syntax error",
+            r"SyntaxError:",
+            r"ModuleNotFoundError:",
+            r"ImportError:",
+            r"FileNotFoundError:",
+            r"NameError:",
+            r"TypeError:",
+            r"ValueError:",
+            r"KeyError:",
+            r"IndexError:",
+            r"AttributeError:",
+            r"externally-managed-environment",
         ]
         combined_pattern = "|".join(error_patterns)
         if re.search(combined_pattern, feedback, re.IGNORECASE):

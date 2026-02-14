@@ -447,11 +447,13 @@ async def _check_and_notify_preview():
 
 @api.get("/api/preview/{file_path:path}")
 async def serve_preview(file_path: str):
-    full_path = os.path.join(work_dir_path, file_path)
-    if not full_path.startswith(os.path.abspath(work_dir_path)):
+    abs_work_dir = os.path.abspath(work_dir_path)
+    full_path = os.path.abspath(os.path.join(abs_work_dir, file_path))
+    if not full_path.startswith(abs_work_dir):
         return JSONResponse(status_code=403, content={"error": "Access denied"})
     if not os.path.isfile(full_path):
-        return JSONResponse(status_code=404, content={"error": "File not found"})
+        logger.warning(f"Preview file not found: {full_path}")
+        return JSONResponse(status_code=404, content={"error": f"File not found: {file_path}"})
     
     ext = os.path.splitext(file_path)[1].lower()
     content_types = {

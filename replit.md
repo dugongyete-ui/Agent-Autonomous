@@ -58,6 +58,12 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: FIX - Renamed all AgenticSeek references to Agent-DzeckAi
+- 2026-02-14: FIX - Model selector now visible in chat header (clickable badge)
+- 2026-02-14: FIX - Removed incompatible microsoft/DialoGPT-medium from model list
+- 2026-02-14: FIX - Default model changed to Qwen/Qwen2.5-72B-Instruct
+- 2026-02-14: FIX - setup_dependencies.sh now includes frontend rebuild step
+- 2026-02-14: FIX - Installed all missing Python dependencies
 - 2026-02-14: FEATURE - Frontend: WebSocket real-time connection (status, progress, file updates)
 - 2026-02-14: FEATURE - Frontend: Live Preview tab dengan iframe untuk preview website yang dibuat AI
 - 2026-02-14: FEATURE - Frontend: Files tab dengan file browser dan code viewer

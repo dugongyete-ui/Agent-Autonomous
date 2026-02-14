@@ -361,41 +361,11 @@ async def get_model_config():
             "server": "https://api.groq.com/openai/v1",
             "api_key_env": "GROQ_API_KEY"
         },
-        "together": {
-            "name": "Together AI",
-            "models": ["meta-llama/Llama-3.3-70B-Instruct-Turbo", "Qwen/Qwen2.5-72B-Instruct-Turbo", "mistralai/Mixtral-8x22B-Instruct-v0.1", "deepseek-ai/DeepSeek-V3"],
-            "server": "https://api.together.xyz/v1",
-            "api_key_env": "TOGETHER_API_KEY"
-        },
         "huggingface": {
             "name": "HuggingFace (Gratis)",
             "models": ["Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct", "meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1", "microsoft/DialoGPT-medium"],
             "server": "https://api-inference.huggingface.co",
             "api_key_env": "HUGGINGFACE_API_KEY"
-        },
-        "openai": {
-            "name": "OpenAI",
-            "models": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
-            "server": "https://api.openai.com/v1",
-            "api_key_env": "OPENAI_API_KEY"
-        },
-        "deepseek": {
-            "name": "DeepSeek",
-            "models": ["deepseek-chat", "deepseek-coder"],
-            "server": "https://api.deepseek.com",
-            "api_key_env": "DEEPSEEK_API_KEY"
-        },
-        "google": {
-            "name": "Google Gemini",
-            "models": ["gemini-2.0-flash", "gemini-1.5-pro"],
-            "server": "https://generativelanguage.googleapis.com/v1beta/openai/",
-            "api_key_env": "GOOGLE_API_KEY"
-        },
-        "openrouter": {
-            "name": "OpenRouter",
-            "models": ["meta-llama/llama-3.3-70b-instruct", "anthropic/claude-3.5-sonnet", "google/gemini-2.0-flash-exp:free"],
-            "server": "https://openrouter.ai/api/v1",
-            "api_key_env": "OPENROUTER_API_KEY"
         }
     }
 

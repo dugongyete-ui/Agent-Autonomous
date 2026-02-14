@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .kalkulator {
+            width: 300px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .kalkulator input {
+            width: 100%;
+            height: 40px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .kalkulator button {
+            width: 100%;
+            height: 40px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .kalkulator button:hover {
+            background-color: #3e8e41;
+        }
+        .hasil {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="kalkulator">
+        <h2>Kalkulator</h2>
+        <input type="number" id="bil1" placeholder="Bilangan 1">
+        <input type="number" id="bil2" placeholder="Bilangan 2">
+        <select id="operator">
+            <option value="+">Tambah</option>
+            <option value="-">Kurang</option>
+            <option value="*">Kali</option>
+            <option value="/">Bagi</option>
+        </select>
+        <button id="hitung">Hitung</button>
+        <p class="hasil" id="hasil"></p>
+    </div>
+    <script>
+        const hitung = document.getElementById('hitung');
+        const bil1 = document.getElementById('bil1');
+        const bil2 = document.getElementById('bil2');
+        const operator = document.getElementById('operator');
+        const hasil = document.getElementById('hasil');
+
+        hitung.addEventListener('click', () => {
+            const num1 = parseFloat(bil1.value);
+            const num2 = parseFloat(bil2.value);
+            const op = operator.value;
+
+            let result;
+            switch (op) {
+                case '+':
+                    result = num1 + num2;
+                    break;
+                case '-':
+                    result = num1 - num2;
+                    break;
+                case '*':
+                    result = num1 * num2;
+                    break;
+                case '/':
+                    if (num2 !== 0) {
+                        result = num1 / num2;
+                    } else {
+                        result = 'Error: Bagi dengan nol';
+                    }
+                    break;
+                default:
+                    result = 'Error: Operator tidak valid';
+            }
+
+            hasil.innerText = `Hasil: ${result}`;
+        });
+    </script>
+</body>
+</html>

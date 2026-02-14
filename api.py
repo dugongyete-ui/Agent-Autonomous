@@ -274,10 +274,13 @@ async def get_latest_answer():
             "uid": str(uuid.uuid4())
         })
     uid = str(uuid.uuid4())
-    if not any(q["answer"] == interaction.current_agent.last_answer for q in query_resp_history):
+    current_answer = interaction.current_agent.get_formatted_answer() if hasattr(interaction.current_agent, 'get_formatted_answer') else interaction.current_agent.last_answer
+    if not current_answer:
+        current_answer = interaction.current_agent.last_answer or ""
+    if not any(q["answer"] == current_answer for q in query_resp_history):
         query_resp = {
             "done": "false",
-            "answer": interaction.current_agent.last_answer,
+            "answer": current_answer,
             "reasoning": interaction.current_agent.last_reasoning,
             "agent_name": interaction.current_agent.agent_name if interaction.current_agent else "None",
             "success": interaction.current_agent.success,
@@ -285,8 +288,6 @@ async def get_latest_answer():
             "status": interaction.current_agent.get_status_message if interaction.current_agent else "No status available",
             "uid": uid
         }
-        interaction.current_agent.last_answer = ""
-        interaction.current_agent.last_reasoning = ""
         query_resp_history.append(query_resp)
         return JSONResponse(status_code=200, content=query_resp)
     if query_resp_history:
@@ -358,10 +359,14 @@ async def process_query(request: QueryRequest):
             query_resp.answer = "Error: No current agent"
             return JSONResponse(status_code=400, content=query_resp.jsonify())
 
-        logger.info(f"Answer: {interaction.last_answer}")
+        formatted_answer = interaction.current_agent.get_formatted_answer()
+        if not formatted_answer or formatted_answer.strip() == "":
+            formatted_answer = interaction.last_answer or ""
+
+        logger.info(f"Answer: {formatted_answer}")
         logger.info(f"Blocks: {blocks_json}")
         query_resp.done = "true"
-        query_resp.answer = interaction.last_answer or ""
+        query_resp.answer = formatted_answer
         query_resp.reasoning = interaction.last_reasoning or ""
         query_resp.agent_name = interaction.current_agent.agent_name
         query_resp.success = str(interaction.last_success)

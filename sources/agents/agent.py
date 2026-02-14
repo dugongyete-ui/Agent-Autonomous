@@ -207,6 +207,61 @@ class Agent():
                 raw += line + "\n"
         return raw
 
+    def get_formatted_answer(self) -> str:
+        """
+        Return a properly formatted answer for the frontend/API.
+        Replaces block:X markers with meaningful summaries of execution results.
+        """
+        if self.last_answer is None:
+            return ""
+
+        answer = self.last_answer
+        if not self.blocks_result:
+            return answer
+
+        lines = answer.split("\n")
+        formatted_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("block:"):
+                try:
+                    block_idx = int(stripped.split(":")[1])
+                    if block_idx < len(self.blocks_result):
+                        br = self.blocks_result[block_idx]
+                        if br.tool_type in ('html', 'css', 'javascript', 'typescript', 'sql'):
+                            formatted_lines.append(f"**File disimpan:** `{br.tool_type}`")
+                            if br.feedback:
+                                formatted_lines.append(f"> {br.feedback.strip()[:200]}")
+                        elif br.tool_type in ('python', 'bash', 'c', 'go', 'java'):
+                            status_icon = "berhasil" if br.success else "gagal"
+                            formatted_lines.append(f"**Eksekusi {br.tool_type}:** {status_icon}")
+                            if br.feedback and len(br.feedback.strip()) > 0:
+                                fb = br.feedback.strip()[:300]
+                                formatted_lines.append(f"```\n{fb}\n```")
+                        else:
+                            if br.feedback:
+                                formatted_lines.append(f"> {br.feedback.strip()[:200]}")
+                except (ValueError, IndexError):
+                    formatted_lines.append(line)
+            else:
+                formatted_lines.append(line)
+
+        result = "\n".join(formatted_lines).strip()
+        if not result and self.blocks_result:
+            summary_parts = []
+            files_saved = []
+            for br in self.blocks_result:
+                if br.tool_type in ('html', 'css', 'javascript', 'typescript', 'sql'):
+                    files_saved.append(br.tool_type)
+                elif br.success:
+                    summary_parts.append(f"Kode {br.tool_type} berhasil dijalankan.")
+                else:
+                    summary_parts.append(f"Kode {br.tool_type} gagal: {br.feedback[:100]}")
+            if files_saved:
+                summary_parts.insert(0, f"File berhasil disimpan: {', '.join(files_saved)}")
+            result = "\n".join(summary_parts)
+        return result
+
     def show_answer(self):
         """
         Show the answer in a pretty way.

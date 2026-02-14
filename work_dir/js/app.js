@@ -1,5 +1,4 @@
-// Tambahkan event listener untuk tombol explore
+// Tambahkan event listener untuk button
 document.querySelector('button').addEventListener('click', function() {
-    // Lakukan sesuatu ketika tombol diklik
-    console.log('Tombol explore diklik!');
+    alert('Selamat datang di portfolio saya!');
 });

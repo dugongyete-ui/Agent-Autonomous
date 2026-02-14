@@ -58,6 +58,21 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: CRITICAL FIX - pip install gagal di Replit Nix environment
+  - Removed `--break-system-packages` flag dari sandbox.py, terminal.py, BashInterpreter.py
+  - Replit pip bekerja tanpa flag khusus, flag tersebut malah menyebabkan "externally-managed-environment" error
+  - Environment variables (PATH, PYTHONDONTWRITEBYTECODE) sekarang di-pass ke subprocess
+- 2026-02-14: FIX - BashInterpreter false positive error detection
+  - Patterns terlalu agresif (e.g., "not found" triggered pada output sukses)
+  - Diganti dengan pattern yang lebih spesifik (Traceback, SyntaxError, dll)
+- 2026-02-14: FIX - File saving reliability
+  - save_block() sekarang menggunakan encoding UTF-8 dan verifikasi setelah save
+  - os.makedirs() menggunakan exist_ok=True untuk mencegah race condition
+- 2026-02-14: FIX - Preview & file serving
+  - Mounted work_dir sebagai /workspace static files untuk akses langsung
+  - preview-files endpoint sekarang mengembalikan main_file dan preview_url
+  - Path resolution di serve_preview menggunakan os.path.abspath untuk keamanan
+  - _check_and_notify_preview mengirim file_update WebSocket untuk SEMUA file, bukan hanya HTML
 - 2026-02-14: CRITICAL FIX - Tag matching collision: `\`\`\`c` matched `\`\`\`css`, `\`\`\`java` matched `\`\`\`javascript`
   - Added `_is_exact_tag_match()` in tools.py - checks next char after tag is non-alphabetical
   - CSS/JS files were being "executed" as C/Java instead of saved - now properly saved to disk

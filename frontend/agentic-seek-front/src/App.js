@@ -34,6 +34,7 @@ function App() {
   const [editorModified, setEditorModified] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
+  const [activeAgentType, setActiveAgentType] = useState(null);
   const messagesEndRef = useRef(null);
   const wsRef = useRef(null);
   const previewIframeRef = useRef(null);
@@ -67,10 +68,15 @@ function App() {
               setStatus(msg.status || "");
               setRealtimeProgress(msg.progress || 0);
               setRealtimeDetails(msg.details || "");
+              if (msg.progress >= 1.0) {
+                setTimeout(() => setActiveAgentType(null), 10000);
+              }
               break;
             case "agent_switch":
+              setActiveAgentType(msg.agent_type);
               if (msg.agent_type === "browser_agent") {
                 setActiveView("browser");
+                fetchScreenshot();
               } else if (msg.agent_type === "code_agent") {
                 setActiveView("preview");
               }
@@ -287,11 +293,20 @@ function App() {
     const pollInterval = setInterval(() => {
       if (isLoading) {
         fetchLatestAnswer();
-        fetchScreenshot();
       }
     }, 5000);
     return () => clearInterval(pollInterval);
   }, [isLoading, fetchLatestAnswer]);
+
+  useEffect(() => {
+    if (activeView === "browser" || activeAgentType === "browser_agent") {
+      fetchScreenshot();
+      const screenshotInterval = setInterval(() => {
+        fetchScreenshot();
+      }, 3000);
+      return () => clearInterval(screenshotInterval);
+    }
+  }, [activeView, activeAgentType, isLoading]);
 
   const checkHealth = async () => {
     try {
@@ -374,7 +389,6 @@ function App() {
     setIsLoading(true);
     setError(null);
     setQuery("");
-    setActiveView("chat");
 
     try {
       const res = await axios.post(`${BACKEND_URL}/query`, {
@@ -448,6 +462,7 @@ function App() {
     setSaveStatus(null);
     setRealtimeProgress(0);
     setRealtimeDetails("");
+    setActiveAgentType(null);
   };
 
   const handleClearHistory = async () => {
@@ -1280,7 +1295,7 @@ function App() {
       </main>
 
       <div className="mobile-bottom-nav">
-        {navItems.slice(0, 4).map((item) => (
+        {navItems.map((item) => (
           <button
             key={item.id}
             className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`}

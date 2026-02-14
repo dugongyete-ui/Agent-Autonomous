@@ -1705,6 +1705,16 @@ body {
     display: flex;
   }
 
+  .bottom-nav-item {
+    padding: 6px 2px;
+    font-size: 0.6rem;
+  }
+
+  .bottom-nav-item .nav-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .app-container {
     flex-direction: column;
     height: 100vh;

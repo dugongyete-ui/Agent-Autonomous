@@ -23,7 +23,83 @@ function App() {
   const [selectedModel, setSelectedModel] = useState("");
   const [isChangingModel, setIsChangingModel] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const [previewFiles, setPreviewFiles] = useState([]);
+  const [selectedPreviewFile, setSelectedPreviewFile] = useState("");
+  const [wsStatus, setWsStatus] = useState("disconnected");
+  const [realtimeProgress, setRealtimeProgress] = useState(0);
+  const [realtimeDetails, setRealtimeDetails] = useState("");
+  const [projectFiles, setProjectFiles] = useState([]);
+  const [selectedFileContent, setSelectedFileContent] = useState(null);
   const messagesEndRef = useRef(null);
+  const wsRef = useRef(null);
+  const previewIframeRef = useRef(null);
+
+  const connectWebSocket = useCallback(() => {
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsHost = BACKEND_URL ? new URL(BACKEND_URL).host : window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setWsStatus("connected");
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          } else {
+            clearInterval(pingInterval);
+          }
+        }, 30000);
+        ws._pingInterval = pingInterval;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          switch (msg.type) {
+            case "status":
+              setStatus(msg.status || "");
+              setRealtimeProgress(msg.progress || 0);
+              setRealtimeDetails(msg.details || "");
+              break;
+            case "execution":
+              break;
+            case "file_update":
+              fetchPreviewFiles();
+              fetchProjectFiles();
+              break;
+            case "preview_ready":
+              fetchPreviewFiles();
+              if (msg.preview_url) {
+                setSelectedPreviewFile(msg.preview_url.replace("/api/preview/", ""));
+              }
+              break;
+            case "pong":
+              break;
+            default:
+              break;
+          }
+        } catch (e) {
+          console.error("WebSocket message parse error:", e);
+        }
+      };
+
+      ws.onclose = () => {
+        setWsStatus("disconnected");
+        if (ws._pingInterval) clearInterval(ws._pingInterval);
+        setTimeout(() => connectWebSocket(), 3000);
+      };
+
+      ws.onerror = () => {
+        setWsStatus("error");
+      };
+    } catch (e) {
+      console.error("WebSocket connection error:", e);
+      setTimeout(() => connectWebSocket(), 5000);
+    }
+  }, []);
 
   const fetchModelConfig = useCallback(async () => {
     try {
@@ -35,6 +111,37 @@ function App() {
       console.error("Error fetching model config:", err);
     }
   }, []);
+
+  const fetchPreviewFiles = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/preview-files`);
+      setPreviewFiles(res.data.files || []);
+      if (res.data.files?.length > 0 && !selectedPreviewFile) {
+        const idx = res.data.files.indexOf("index.html");
+        setSelectedPreviewFile(idx >= 0 ? "index.html" : res.data.files[0]);
+      }
+    } catch (err) {
+      console.error("Error fetching preview files:", err);
+    }
+  }, [selectedPreviewFile]);
+
+  const fetchProjectFiles = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/project-files`);
+      setProjectFiles(res.data.files || []);
+    } catch (err) {
+      console.error("Error fetching project files:", err);
+    }
+  }, []);
+
+  const fetchFileContent = async (filePath) => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/file-content/${filePath}`);
+      setSelectedFileContent({ file: filePath, content: res.data.content, size: res.data.size });
+    } catch (err) {
+      console.error("Error fetching file content:", err);
+    }
+  };
 
   const handleModelChange = async () => {
     if (!selectedProvider || !selectedModel) return;
@@ -88,18 +195,29 @@ function App() {
         ]);
         setStatus(data.status);
         scrollToBottom();
+        fetchPreviewFiles();
+        fetchProjectFiles();
       }
     } catch (error) {
       console.error("Error fetching latest answer:", error);
     }
-  }, [messages]);
+  }, [messages, fetchPreviewFiles, fetchProjectFiles]);
 
   useEffect(() => {
     checkHealth();
     fetchModelConfig();
+    fetchPreviewFiles();
+    fetchProjectFiles();
+    connectWebSocket();
     const healthInterval = setInterval(checkHealth, 10000);
-    return () => clearInterval(healthInterval);
-  }, [fetchModelConfig]);
+    return () => {
+      clearInterval(healthInterval);
+      if (wsRef.current) {
+        if (wsRef.current._pingInterval) clearInterval(wsRef.current._pingInterval);
+        wsRef.current.close();
+      }
+    };
+  }, [fetchModelConfig, connectWebSocket, fetchPreviewFiles, fetchProjectFiles]);
 
   useEffect(() => {
     const pollInterval = setInterval(() => {
@@ -219,6 +337,8 @@ function App() {
           ]);
         }
       }
+      fetchPreviewFiles();
+      fetchProjectFiles();
     } catch (err) {
       console.error("Error:", err);
       const errData = err.response?.data;
@@ -292,6 +412,12 @@ function App() {
     }
   };
 
+  const refreshPreview = () => {
+    if (previewIframeRef.current) {
+      previewIframeRef.current.src = previewIframeRef.current.src;
+    }
+  };
+
   const navItems = [
     {
       id: "chat",
@@ -303,12 +429,32 @@ function App() {
       ),
     },
     {
+      id: "preview",
+      label: "Preview",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+      ),
+    },
+    {
       id: "editor",
       label: "Editor",
       icon: (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="16 18 22 12 16 6"/>
           <polyline points="8 6 2 12 8 18"/>
+        </svg>
+      ),
+    },
+    {
+      id: "files",
+      label: "Files",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>
       ),
     },
@@ -326,6 +472,22 @@ function App() {
   ];
 
   const currentProviderModels = modelConfig?.providers?.[selectedProvider]?.models || [];
+
+  const getFileIcon = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    const iconMap = {
+      'html': '#e44d26', 'css': '#264de4', 'js': '#f7df1e',
+      'py': '#3776ab', 'json': '#292929', 'md': '#083fa1',
+      'txt': '#666', 'svg': '#ffb13b', 'go': '#00add8',
+    };
+    return iconMap[ext] || '#888';
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   return (
     <div className="app-container">
@@ -458,6 +620,12 @@ function App() {
               <span>{isOnline ? "Online" : "Offline"}</span>
             )}
           </div>
+          {!sidebarCollapsed && wsStatus === "connected" && (
+            <div className="ws-badge">
+              <div className="ws-dot" />
+              <span>Live</span>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -493,53 +661,6 @@ function App() {
                 </button>
               ))}
               <hr className="mobile-divider" />
-
-              <div className="mobile-model-section">
-                <div className="mobile-model-header">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  <span>Model AI</span>
-                </div>
-                {modelConfig && (
-                  <div className="mobile-model-controls">
-                    <div className="model-current-info">
-                      <span className="model-current-label">Aktif:</span>
-                      <span className="model-current-value">{modelConfig.current_model}</span>
-                    </div>
-                    <select
-                      className="model-select"
-                      value={selectedProvider}
-                      onChange={(e) => {
-                        const newProvider = e.target.value;
-                        setSelectedProvider(newProvider);
-                        const models = modelConfig.providers[newProvider]?.models || [];
-                        if (models.length > 0) setSelectedModel(models[0]);
-                      }}
-                    >
-                      {Object.entries(modelConfig.providers).map(([key, val]) => (
-                        <option key={key} value={key}>{val.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      className="model-select"
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                    >
-                      {currentProviderModels.map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                    <button
-                      className="model-apply-btn"
-                      onClick={() => { handleModelChange(); setMobileMenuOpen(false); }}
-                      disabled={isChangingModel}
-                    >
-                      {isChangingModel ? "Mengganti..." : "Terapkan"}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <hr className="mobile-divider" />
               <button className="mobile-nav-item" onClick={() => { handleNewChat(); setMobileMenuOpen(false); }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span>Chat Baru</span>
@@ -558,6 +679,13 @@ function App() {
       )}
 
       <main className="main-content">
+        {isLoading && realtimeProgress > 0 && (
+          <div className="progress-bar-container">
+            <div className="progress-bar" style={{ width: `${realtimeProgress * 100}%` }} />
+            {realtimeDetails && <span className="progress-label">{realtimeDetails}</span>}
+          </div>
+        )}
+
         {activeView === "chat" && (
           <div className="chat-panel">
             <div className="panel-header">
@@ -587,6 +715,11 @@ function App() {
                   {modelConfig && (
                     <p className="empty-hint">Model aktif: {modelConfig.providers[modelConfig.current_provider]?.name} - {modelConfig.current_model}</p>
                   )}
+                  <div className="quick-actions">
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan website portfolio modern"); }}>Website Portfolio</button>
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan kalkulator web dengan design menarik"); }}>Kalkulator Web</button>
+                    <button className="quick-btn" onClick={() => { setQuery("Buatkan to-do list app dengan local storage"); }}>To-Do App</button>
+                  </div>
                 </div>
               ) : (
                 messages.map((msg, index) => (
@@ -650,6 +783,70 @@ function App() {
           </div>
         )}
 
+        {activeView === "preview" && (
+          <div className="preview-panel">
+            <div className="panel-header">
+              <h2>Live Preview</h2>
+              <div className="panel-header-right">
+                {previewFiles.length > 0 && (
+                  <select
+                    className="preview-file-select"
+                    value={selectedPreviewFile}
+                    onChange={(e) => setSelectedPreviewFile(e.target.value)}
+                  >
+                    {previewFiles.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                )}
+                <button className="refresh-btn" onClick={refreshPreview} title="Refresh Preview">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="preview-content">
+              {previewFiles.length > 0 && selectedPreviewFile ? (
+                <div className="preview-frame">
+                  <div className="browser-toolbar">
+                    <div className="browser-dots">
+                      <span className="dot red" />
+                      <span className="dot yellow" />
+                      <span className="dot green" />
+                    </div>
+                    <div className="browser-url-bar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                      <span>{selectedPreviewFile}</span>
+                    </div>
+                  </div>
+                  <iframe
+                    ref={previewIframeRef}
+                    src={`${BACKEND_URL}/api/preview/${selectedPreviewFile}`}
+                    title="Live Preview"
+                    className="preview-iframe"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  />
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                      <line x1="8" y1="21" x2="16" y2="21"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                  </div>
+                  <h3>Live Preview</h3>
+                  <p>Preview website yang dibuat AI akan tampil di sini secara langsung.</p>
+                  <p className="empty-hint">Minta AI membuat website untuk melihat preview-nya di sini.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeView === "editor" && (
           <div className="editor-panel">
             <div className="panel-header">
@@ -706,6 +903,62 @@ function App() {
           </div>
         )}
 
+        {activeView === "files" && (
+          <div className="files-panel">
+            <div className="panel-header">
+              <h2>Project Files</h2>
+              <div className="panel-header-right">
+                <span className="panel-badge">{projectFiles.length} file</span>
+                <button className="refresh-btn" onClick={fetchProjectFiles} title="Refresh">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="files-layout">
+              <div className="files-list">
+                {projectFiles.length > 0 ? (
+                  projectFiles.map((file, index) => (
+                    <button
+                      key={index}
+                      className={`file-item ${selectedFileContent?.file === file.name ? "active" : ""}`}
+                      onClick={() => fetchFileContent(file.name)}
+                    >
+                      <div className="file-icon" style={{ background: getFileIcon(file.name) }} />
+                      <div className="file-info">
+                        <span className="file-name">{file.name}</span>
+                        <span className="file-size">{formatFileSize(file.size)}</span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="empty-state small">
+                    <p>Belum ada file project.</p>
+                    <p className="empty-hint">Minta AI membuat sesuatu untuk melihat file di sini.</p>
+                  </div>
+                )}
+              </div>
+              <div className="file-viewer">
+                {selectedFileContent ? (
+                  <div className="file-viewer-content">
+                    <div className="file-viewer-header">
+                      <span className="file-viewer-name">{selectedFileContent.file}</span>
+                      <span className="file-viewer-size">{formatFileSize(selectedFileContent.size)}</span>
+                    </div>
+                    <pre className="file-viewer-code">{selectedFileContent.content}</pre>
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <p>Pilih file untuk melihat isinya</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeView === "browser" && (
           <div className="browser-panel">
             <div className="panel-header">
@@ -758,7 +1011,7 @@ function App() {
       </main>
 
       <div className="mobile-bottom-nav">
-        {navItems.map((item) => (
+        {navItems.slice(0, 4).map((item) => (
           <button
             key={item.id}
             className={`bottom-nav-item ${activeView === item.id ? "active" : ""}`}

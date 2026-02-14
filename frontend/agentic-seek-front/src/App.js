@@ -422,15 +422,24 @@ function App() {
 
   const handleNewChat = async () => {
     try {
-      await axios.post(`${BACKEND_URL}/new_chat`);
+      await axios.post(`${BACKEND_URL}/new_project`);
     } catch (err) {
-      console.error("Error creating new chat:", err);
+      console.error("Error creating new project:", err);
     }
     setMessages([]);
     setResponseData(null);
     setError(null);
     setStatus("Agent siap");
     setQuery("");
+    setPreviewFiles([]);
+    setSelectedPreviewFile("");
+    setProjectFiles([]);
+    setSelectedFileContent(null);
+    setEditorContent(null);
+    setEditorModified(false);
+    setSaveStatus(null);
+    setRealtimeProgress(0);
+    setRealtimeDetails("");
   };
 
   const handleClearHistory = async () => {

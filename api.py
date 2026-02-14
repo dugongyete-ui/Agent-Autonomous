@@ -73,6 +73,8 @@ if not os.path.exists(work_dir_path):
 
 workspace_mgr = WorkspaceManager(base_dir=work_dir_path)
 
+api.mount("/workspace", StaticFiles(directory=work_dir_path, html=True), name="workspace")
+
 def initialize_system():
     stealth_mode = config.getboolean('BROWSER', 'stealth_mode')
     personality_folder = "jarvis" if config.getboolean('MAIN', 'jarvis_personality') else "base"
@@ -421,17 +423,26 @@ async def process_query(request: QueryRequest):
 async def _check_and_notify_preview():
     try:
         files = []
+        all_files = []
         for root, dirs, fnames in os.walk(work_dir_path):
             dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
             for fname in fnames:
+                rel = os.path.relpath(os.path.join(root, fname), work_dir_path)
+                all_files.append(rel)
                 if fname.endswith('.html'):
-                    rel = os.path.relpath(os.path.join(root, fname), work_dir_path)
                     files.append(rel)
+
+        for f in all_files:
+            await ws_manager.send_file_update("create", f)
+
         if files:
             main_file = "index.html" if "index.html" in files else files[0]
             await ws_manager.send_preview_ready(f"/api/preview/{main_file}", "static_html")
-    except Exception:
-        pass
+            logger.info(f"Preview ready: /api/preview/{main_file}, total files: {len(all_files)}")
+        elif all_files:
+            logger.info(f"Files created but no HTML: {all_files}")
+    except Exception as e:
+        logger.error(f"Error in _check_and_notify_preview: {e}")
 
 
 @api.get("/api/preview/{file_path:path}")
@@ -470,13 +481,25 @@ async def serve_preview(file_path: str):
 @api.get("/api/preview-files")
 async def list_preview_files():
     html_files = []
+    all_files = []
     for root, dirs, fnames in os.walk(work_dir_path):
         dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
         for fname in fnames:
+            rel = os.path.relpath(os.path.join(root, fname), work_dir_path)
+            all_files.append(rel)
             if fname.endswith('.html'):
-                rel = os.path.relpath(os.path.join(root, fname), work_dir_path)
                 html_files.append(rel)
-    return JSONResponse(status_code=200, content={"files": html_files, "total": len(html_files)})
+    main_file = None
+    if html_files:
+        main_file = "index.html" if "index.html" in html_files else html_files[0]
+    return JSONResponse(status_code=200, content={
+        "files": html_files,
+        "all_files": all_files,
+        "total": len(html_files),
+        "total_all": len(all_files),
+        "main_file": main_file,
+        "preview_url": f"/api/preview/{main_file}" if main_file else None
+    })
 
 
 @api.get("/api/download-zip")

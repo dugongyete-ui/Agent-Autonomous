@@ -126,10 +126,16 @@ class Tools():
         directory = os.path.join(self.work_dir, save_path_dir)
         if directory and not os.path.exists(directory):
             self.logger.info(f"Creating directory {directory}")
-            os.makedirs(directory)
+            os.makedirs(directory, exist_ok=True)
+        full_path = os.path.join(directory, save_path_file)
         for block in blocks:
-            with open(os.path.join(directory, save_path_file), 'w') as f:
+            with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(block)
+        if os.path.exists(full_path):
+            size = os.path.getsize(full_path)
+            self.logger.info(f"File saved successfully: {full_path} ({size} bytes)")
+        else:
+            self.logger.error(f"File save FAILED: {full_path}")
     
     def get_parameter_value(self, block: str, parameter_name: str) -> str:
         """

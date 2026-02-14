@@ -58,6 +58,12 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: CRITICAL FIX - Fixed "block:0, block:1" placeholder text in AI responses
+  - Added `get_formatted_answer()` method to Agent base class - replaces block markers with meaningful file/execution summaries
+  - Updated `executorResult` schema to include `save_path` for filename tracking
+  - Fixed API `/query` and `/latest_answer` endpoints to return formatted answers
+  - Fixed `_verify_saved_files()` called after `remove_blocks()` - now verification runs before blocks are stripped
+  - Updated `execute_modules()` and `execute_modules_with_sandbox()` to pass save_path to executorResult
 - 2026-02-14: MAJOR UPGRADE - Frontend rebuilt: Editor tab sekarang bisa edit file project dengan save (Ctrl+S), file tree, line numbers
 - 2026-02-14: FEATURE - PUT /api/file-content/{path} endpoint untuk save file yang diedit dari Editor
 - 2026-02-14: UPGRADE - Preview tab: iframe preview dengan file selector, refresh, empty state dengan action button

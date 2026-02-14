@@ -6,10 +6,13 @@ import aiofiles
 import configparser
 import asyncio
 import time
+import zipfile
+import io
+import shutil
 from typing import List
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uuid
@@ -331,14 +334,83 @@ async def process_query(request: QueryRequest):
         return JSONResponse(status_code=200, content=query_resp.jsonify())
     except Exception as e:
         is_generating = False
-        logger.error(f"An error occurred: {str(e)}")
-        query_resp.answer = f"Error: {str(e)}"
-        query_resp.reasoning = f"An exception occurred during processing."
-        return JSONResponse(status_code=500, content=query_resp.jsonify())
+        error_msg = str(e)
+        logger.error(f"An error occurred: {error_msg}")
+        if "402" in error_msg or "payment" in error_msg.lower() or "credit" in error_msg.lower() or "depleted" in error_msg.lower():
+            query_resp.answer = "Kredit API habis. Silakan ganti ke provider Groq di pengaturan Model AI, atau isi ulang kredit HuggingFace Anda."
+            query_resp.done = "true"
+            return JSONResponse(status_code=200, content=query_resp.jsonify())
+        if "429" in error_msg or "rate_limit" in error_msg.lower() or "rate limit" in error_msg.lower():
+            query_resp.answer = "Batas penggunaan API tercapai. Silakan tunggu beberapa menit dan coba lagi."
+            query_resp.done = "true"
+            return JSONResponse(status_code=200, content=query_resp.jsonify())
+        if "api_key" in error_msg.lower() or "api key" in error_msg.lower():
+            query_resp.answer = "API Key tidak ditemukan atau tidak valid. Silakan periksa pengaturan API Key Anda."
+            query_resp.done = "true"
+            return JSONResponse(status_code=200, content=query_resp.jsonify())
+        query_resp.answer = f"Terjadi kesalahan saat memproses. Silakan coba lagi. Detail: {error_msg[:200]}"
+        query_resp.reasoning = f"Exception terjadi saat pemrosesan."
+        query_resp.done = "true"
+        return JSONResponse(status_code=200, content=query_resp.jsonify())
     finally:
         logger.info("Processing finished")
         if config.getboolean('MAIN', 'save_session'):
             interaction.save_session()
+
+@api.get("/api/download-zip")
+async def download_project_zip():
+    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    if not os.path.isdir(work_dir):
+        return JSONResponse(status_code=404, content={"error": "Belum ada project yang dibuat. Minta AI untuk membuat project terlebih dahulu."})
+    
+    files_found = False
+    for root, dirs, files in os.walk(work_dir):
+        dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
+        if files:
+            files_found = True
+            break
+    
+    if not files_found:
+        return JSONResponse(status_code=404, content={"error": "Folder project kosong. Minta AI untuk membuat kode terlebih dahulu."})
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(work_dir):
+            dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, work_dir)
+                try:
+                    zf.write(file_path, arcname)
+                except Exception:
+                    pass
+    
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=agent-dzeck-project.zip"}
+    )
+
+@api.get("/api/project-files")
+async def list_project_files():
+    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    if not os.path.isdir(work_dir):
+        return JSONResponse(status_code=200, content={"files": [], "total": 0})
+    
+    files_list = []
+    for root, dirs, files in os.walk(work_dir):
+        dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
+        for file in files:
+            file_path = os.path.join(root, file)
+            rel_path = os.path.relpath(file_path, work_dir)
+            try:
+                size = os.path.getsize(file_path)
+                files_list.append({"name": rel_path, "size": size})
+            except Exception:
+                pass
+    
+    return JSONResponse(status_code=200, content={"files": files_list, "total": len(files_list)})
 
 @api.get("/api/config/models")
 async def get_model_config():

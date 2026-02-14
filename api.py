@@ -126,7 +126,7 @@ def initialize_system():
         PlannerAgent(
             name="Planner",
             prompt_path=f"prompts/{personality_folder}/planner_agent.txt",
-            provider=provider, verbose=False, browser=browser
+            provider=provider, verbose=False, browser=browser, ws_manager=ws_manager
         )
     ]
     logger.info("Agents initialized")

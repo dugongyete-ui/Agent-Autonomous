@@ -9,10 +9,11 @@ import time
 import zipfile
 import io
 import shutil
+import json
 from typing import List
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uuid
@@ -24,6 +25,8 @@ from sources.browser import Browser, create_driver
 from sources.utility import pretty_print
 from sources.logger import Logger
 from sources.schemas import QueryRequest, QueryResponse
+from sources.workspace_manager import WorkspaceManager
+from sources.realtime import ws_manager
 from pydantic import BaseModel
 
 class ModelConfigUpdate(BaseModel):
@@ -36,22 +39,17 @@ load_dotenv()
 
 
 def is_running_in_docker():
-    """Detect if code is running inside a Docker container."""
-    # Method 1: Check for .dockerenv file
     if os.path.exists('/.dockerenv'):
         return True
-    
-    # Method 2: Check cgroup
     try:
         with open('/proc/1/cgroup', 'r') as f:
             return 'docker' in f.read()
     except:
         pass
-    
     return False
 
 
-api = FastAPI(title="Agent Dzeck AI API", version="0.1.0")
+api = FastAPI(title="Agent Dzeck AI API", version="0.2.0")
 logger = Logger("backend.log")
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -73,27 +71,21 @@ if not os.path.exists(work_dir_path):
     os.makedirs(work_dir_path, exist_ok=True)
     print(f"[Agent Dzeck AI] Created work directory: {work_dir_path}")
 
+workspace_mgr = WorkspaceManager(base_dir=work_dir_path)
+
 def initialize_system():
     stealth_mode = config.getboolean('BROWSER', 'stealth_mode')
     personality_folder = "jarvis" if config.getboolean('MAIN', 'jarvis_personality') else "base"
     languages = config["MAIN"]["languages"].split(' ')
     
-    # Force headless mode in Docker containers
     headless = config.getboolean('BROWSER', 'headless_browser')
     if is_running_in_docker() and not headless:
-        # Print prominent warning to console (visible in docker-compose output)
         print("\n" + "*" * 70)
         print("*** WARNING: Detected Docker environment - forcing headless_browser=True ***")
         print("*** INFO: To see the browser, run 'python cli.py' on your host machine ***")
         print("*" * 70 + "\n")
-        
-        # Flush to ensure it's displayed immediately
         sys.stdout.flush()
-        
-        # Also log to file
         logger.warning("Detected Docker environment - forcing headless_browser=True")
-        logger.info("To see the browser, run 'python cli.py' on your host machine instead")
-        
         headless = True
     
     provider = Provider(
@@ -158,6 +150,25 @@ except Exception as e:
 is_generating = False
 query_resp_history = []
 
+
+@api.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong", "timestamp": time.time()}))
+            except json.JSONDecodeError:
+                pass
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)
+
+
 @api.get("/screenshot")
 async def get_screenshot():
     logger.info("Screenshot endpoint called")
@@ -174,8 +185,17 @@ async def get_screenshot():
 async def health_check():
     logger.info("Health check endpoint called")
     if interaction is None:
-        return {"status": "degraded", "version": "0.1.0", "error": "System not fully initialized. Check API key configuration."}
-    return {"status": "healthy", "version": "0.1.0"}
+        return {"status": "degraded", "version": "0.2.0", "error": "System not fully initialized. Check API key configuration."}
+    return {
+        "status": "healthy",
+        "version": "0.2.0",
+        "features": {
+            "websocket": True,
+            "workspace_manager": True,
+            "live_preview": True,
+            "realtime_status": True,
+        }
+    }
 
 @api.get("/is_active")
 async def is_active():
@@ -192,6 +212,7 @@ async def stop():
         return JSONResponse(status_code=503, content={"error": "System not initialized"})
     interaction.current_agent.request_stop()
     is_generating = False
+    await ws_manager.send_status("system", "Dihentikan", 0.0, "Proses dihentikan oleh pengguna")
     return JSONResponse(status_code=200, content={"status": "stopped"})
 
 @api.post("/new_chat")
@@ -215,6 +236,7 @@ async def new_chat():
             agent.last_answer = ""
             agent.last_reasoning = ""
             agent.status_message = "Siap"
+    await ws_manager.send_status("system", "Chat baru dimulai", 0.0)
     return JSONResponse(status_code=200, content={"status": "new_chat_created"})
 
 @api.post("/clear_history")
@@ -275,13 +297,16 @@ async def think_wrapper(interaction, query):
     try:
         interaction.last_query = query
         logger.info("Agents request is being processed")
+        await ws_manager.send_status("system", "Memproses permintaan...", 0.1, query[:100])
         success = await interaction.think()
         if not success:
             interaction.last_answer = "Error: No answer from agent"
             interaction.last_reasoning = "Error: No reasoning from agent"
             interaction.last_success = False
+            await ws_manager.send_status("system", "Gagal memproses", 1.0)
         else:
             interaction.last_success = True
+            await ws_manager.send_status("system", "Selesai", 1.0)
         pretty_print(interaction.last_answer)
         interaction.speak_answer()
         return success
@@ -290,6 +315,7 @@ async def think_wrapper(interaction, query):
         interaction.last_answer = f"Error: {str(e)}"
         interaction.last_reasoning = f"Error: {str(e)}"
         interaction.last_success = False
+        await ws_manager.send_status("system", f"Error: {str(e)[:100]}", 1.0)
         raise e
 
 @api.post("/query", response_model=QueryResponse)
@@ -352,6 +378,8 @@ async def process_query(request: QueryRequest):
         }
         query_resp_history.append(query_resp_dict)
 
+        await _check_and_notify_preview()
+
         logger.info("Query processed successfully")
         return JSONResponse(status_code=200, content=query_resp.jsonify())
     except Exception as e:
@@ -379,6 +407,68 @@ async def process_query(request: QueryRequest):
         logger.info("Processing finished")
         if config.getboolean('MAIN', 'save_session'):
             interaction.save_session()
+
+
+async def _check_and_notify_preview():
+    try:
+        files = []
+        for root, dirs, fnames in os.walk(work_dir_path):
+            dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
+            for fname in fnames:
+                if fname.endswith('.html'):
+                    rel = os.path.relpath(os.path.join(root, fname), work_dir_path)
+                    files.append(rel)
+        if files:
+            main_file = "index.html" if "index.html" in files else files[0]
+            await ws_manager.send_preview_ready(f"/api/preview/{main_file}", "static_html")
+    except Exception:
+        pass
+
+
+@api.get("/api/preview/{file_path:path}")
+async def serve_preview(file_path: str):
+    full_path = os.path.join(work_dir_path, file_path)
+    if not full_path.startswith(os.path.abspath(work_dir_path)):
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
+    if not os.path.isfile(full_path):
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+    
+    ext = os.path.splitext(file_path)[1].lower()
+    content_types = {
+        '.html': 'text/html',
+        '.css': 'text/css',
+        '.js': 'application/javascript',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon',
+        '.woff': 'font/woff',
+        '.woff2': 'font/woff2',
+        '.ttf': 'font/ttf',
+    }
+    media_type = content_types.get(ext, 'application/octet-stream')
+    
+    return FileResponse(
+        full_path,
+        media_type=media_type,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+
+@api.get("/api/preview-files")
+async def list_preview_files():
+    html_files = []
+    for root, dirs, fnames in os.walk(work_dir_path):
+        dirs[:] = [d for d in dirs if d not in ('__pycache__', 'node_modules', '.git', '.cache')]
+        for fname in fnames:
+            if fname.endswith('.html'):
+                rel = os.path.relpath(os.path.join(root, fname), work_dir_path)
+                html_files.append(rel)
+    return JSONResponse(status_code=200, content={"files": html_files, "total": len(html_files)})
+
 
 @api.get("/api/download-zip")
 async def download_project_zip():
@@ -435,9 +525,52 @@ async def list_project_files():
     
     return JSONResponse(status_code=200, content={"files": files_list, "total": len(files_list)})
 
+@api.get("/api/file-content/{file_path:path}")
+async def get_file_content(file_path: str):
+    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    full_path = os.path.join(work_dir, file_path)
+    if not full_path.startswith(os.path.abspath(work_dir)):
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
+    if not os.path.isfile(full_path):
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+    try:
+        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        return JSONResponse(status_code=200, content={
+            "file": file_path,
+            "content": content[:100000],
+            "size": os.path.getsize(full_path),
+            "truncated": len(content) > 100000,
+        })
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@api.get("/api/workspace/stats")
+async def workspace_stats():
+    return JSONResponse(status_code=200, content=workspace_mgr.get_workspace_stats())
+
+@api.get("/api/workspace/list")
+async def workspace_list():
+    return JSONResponse(status_code=200, content={"workspaces": workspace_mgr.list_workspaces()})
+
+@api.get("/api/workspace/structure")
+async def workspace_structure():
+    return JSONResponse(status_code=200, content=workspace_mgr.get_project_structure())
+
+
+@api.get("/api/sandbox/stats")
+async def sandbox_stats():
+    if interaction is None:
+        return JSONResponse(status_code=503, content={"error": "System not initialized"})
+    for agent in interaction.agents:
+        if hasattr(agent, 'sandbox') and agent.sandbox:
+            return JSONResponse(status_code=200, content=agent.sandbox.get_stats())
+    return JSONResponse(status_code=200, content={"total_executions": 0})
+
+
 @api.get("/api/config/models")
 async def get_model_config():
-    """Get current model configuration and available options."""
     models_by_provider = {
         "groq": {
             "name": "Groq",
@@ -464,7 +597,6 @@ async def get_model_config():
 
 @api.post("/api/config/update")
 async def update_model_config(request: ModelConfigUpdate):
-    """Update model configuration."""
     global interaction
     provider_name = request.provider_name
     model = request.model
@@ -480,6 +612,7 @@ async def update_model_config(request: ModelConfigUpdate):
 
     try:
         interaction = initialize_system()
+        await ws_manager.send_status("system", f"Model diganti ke {model}", 1.0)
         return JSONResponse(status_code=200, content={
             "status": "updated",
             "provider": provider_name,

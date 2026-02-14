@@ -262,10 +262,89 @@ body {
   background: rgba(37, 99, 235, 0.1);
   color: #60a5fa;
   font-weight: 500;
-  max-width: 220px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.model-badge-btn {
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-badge-btn:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.5);
+}
+
+.inline-model-selector {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inline-model-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inline-model-row label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.inline-model-row .model-select {
+  flex: 1;
+  min-width: 120px;
+  max-width: 250px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.inline-model-row .model-apply-btn {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.inline-model-row .model-apply-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.model-close-btn {
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.model-close-btn:hover {
+  color: var(--foreground);
+  background: rgba(255,255,255,0.1);
 }
 
 .panel-header-right {

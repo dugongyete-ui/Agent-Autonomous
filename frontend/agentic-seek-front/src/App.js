@@ -692,16 +692,67 @@ function App() {
               <h2>Chat AI Agent</h2>
               <div className="panel-header-right">
                 {modelConfig && (
-                  <span className="model-badge" title={`${modelConfig.current_provider}: ${modelConfig.current_model}`}>
+                  <button
+                    className="model-badge model-badge-btn"
+                    title="Klik untuk ganti model AI"
+                    onClick={() => setShowModelSelector(!showModelSelector)}
+                  >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                    {modelConfig.current_model.length > 25
-                      ? modelConfig.current_model.substring(0, 25) + "..."
+                    {modelConfig.current_provider}/{modelConfig.current_model.length > 20
+                      ? modelConfig.current_model.substring(0, 20) + "..."
                       : modelConfig.current_model}
-                  </span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginLeft: '4px'}}>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
                 )}
                 <span className="panel-badge">{status}</span>
               </div>
             </div>
+            {showModelSelector && modelConfig && (
+              <div className="inline-model-selector">
+                <div className="inline-model-row">
+                  <label>Provider:</label>
+                  <select
+                    className="model-select"
+                    value={selectedProvider}
+                    onChange={(e) => {
+                      const newProvider = e.target.value;
+                      setSelectedProvider(newProvider);
+                      const models = modelConfig.providers[newProvider]?.models || [];
+                      if (models.length > 0) setSelectedModel(models[0]);
+                    }}
+                  >
+                    {Object.entries(modelConfig.providers).map(([key, val]) => (
+                      <option key={key} value={key}>{val.name}</option>
+                    ))}
+                  </select>
+                  <label>Model:</label>
+                  <select
+                    className="model-select"
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                  >
+                    {currentProviderModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="model-apply-btn"
+                    onClick={handleModelChange}
+                    disabled={isChangingModel}
+                  >
+                    {isChangingModel ? "..." : "Terapkan"}
+                  </button>
+                  <button
+                    className="model-close-btn"
+                    onClick={() => setShowModelSelector(false)}
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="messages-container">
               {messages.length === 0 ? (
                 <div className="empty-state">

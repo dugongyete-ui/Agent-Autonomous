@@ -228,19 +228,17 @@ class Agent():
                     block_idx = int(stripped.split(":")[1])
                     if block_idx < len(self.blocks_result):
                         br = self.blocks_result[block_idx]
+                        file_label = f"`{br.save_path}`" if br.save_path else f"`{br.tool_type}`"
                         if br.tool_type in ('html', 'css', 'javascript', 'typescript', 'sql'):
-                            formatted_lines.append(f"**File disimpan:** `{br.tool_type}`")
-                            if br.feedback:
-                                formatted_lines.append(f"> {br.feedback.strip()[:200]}")
+                            formatted_lines.append(f"**File disimpan:** {file_label}")
                         elif br.tool_type in ('python', 'bash', 'c', 'go', 'java'):
-                            status_icon = "berhasil" if br.success else "gagal"
-                            formatted_lines.append(f"**Eksekusi {br.tool_type}:** {status_icon}")
+                            status = "berhasil" if br.success else "gagal"
+                            formatted_lines.append(f"**Eksekusi {br.tool_type}:** {status}")
                             if br.feedback and len(br.feedback.strip()) > 0:
                                 fb = br.feedback.strip()[:300]
                                 formatted_lines.append(f"```\n{fb}\n```")
                         else:
-                            if br.feedback:
-                                formatted_lines.append(f"> {br.feedback.strip()[:200]}")
+                            formatted_lines.append(f"**{br.tool_type}:** {'berhasil' if br.success else 'gagal'}")
                 except (ValueError, IndexError):
                     formatted_lines.append(line)
             else:
@@ -249,16 +247,14 @@ class Agent():
         result = "\n".join(formatted_lines).strip()
         if not result and self.blocks_result:
             summary_parts = []
-            files_saved = []
             for br in self.blocks_result:
+                file_label = br.save_path if br.save_path else br.tool_type
                 if br.tool_type in ('html', 'css', 'javascript', 'typescript', 'sql'):
-                    files_saved.append(br.tool_type)
+                    summary_parts.append(f"File `{file_label}` berhasil disimpan.")
                 elif br.success:
                     summary_parts.append(f"Kode {br.tool_type} berhasil dijalankan.")
                 else:
                     summary_parts.append(f"Kode {br.tool_type} gagal: {br.feedback[:100]}")
-            if files_saved:
-                summary_parts.insert(0, f"File berhasil disimpan: {', '.join(files_saved)}")
             result = "\n".join(summary_parts)
         return result
 
@@ -315,7 +311,7 @@ class Agent():
         success = True
         blocks = None
         if answer.startswith("```"):
-            answer = "I will execute:\n" + answer # there should always be a text before blocks for the function that display answer
+            answer = "I will execute:\n" + answer
 
         self.success = True
         for name, tool in self.tools.items():
@@ -327,9 +323,9 @@ class Agent():
                 for block in blocks:
                     self.show_block(block)
                     output = tool.execute([block])
-                    feedback = tool.interpreter_feedback(output) # tool interpreter feedback
+                    feedback = tool.interpreter_feedback(output)
                     success = not tool.execution_failure_check(output)
-                    self.blocks_result.append(executorResult(block, feedback, success, name))
+                    self.blocks_result.append(executorResult(block, feedback, success, name, save_path))
                     if not success:
                         self.success = False
                         self.memory.push('user', feedback)

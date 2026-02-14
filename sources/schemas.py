@@ -45,7 +45,7 @@ class executorResult:
     """
     A class to store the result of a tool execution.
     """
-    def __init__(self, block: str, feedback: str, success: bool, tool_type: str):
+    def __init__(self, block: str, feedback: str, success: bool, tool_type: str, save_path: str = None):
         """
         Initialize an agent with execution results.
 
@@ -54,11 +54,13 @@ class executorResult:
             feedback: Feedback or response information from the execution.
             success: Boolean indicating whether the agent's execution was successful.
             tool_type: The type of tool used by the agent for execution.
+            save_path: The file path where the block was saved (if applicable).
         """
         self.block = block
         self.feedback = feedback
         self.success = success
         self.tool_type = tool_type
+        self.save_path = save_path
     
     def __str__(self):
         return f"Tool: {self.tool_type}\nBlock: {self.block}\nFeedback: {self.feedback}\nSuccess: {self.success}"
@@ -68,7 +70,8 @@ class executorResult:
             "block": self.block,
             "feedback": self.feedback,
             "success": self.success,
-            "tool_type": self.tool_type
+            "tool_type": self.tool_type,
+            "save_path": self.save_path
         }
 
     def show(self):

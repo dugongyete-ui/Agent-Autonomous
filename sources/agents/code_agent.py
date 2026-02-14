@@ -174,7 +174,7 @@ class CoderAgent(Agent):
 
                 if save_path is not None and self._is_save_only_language(name):
                     feedback = f"[success] File {save_path} berhasil disimpan."
-                    self.blocks_result.append(executorResult(blocks[0] if blocks else "", feedback, True, name))
+                    self.blocks_result.append(executorResult(blocks[0] if blocks else "", feedback, True, name, save_path))
                     self.memory.push('user', feedback)
                     continue
 
@@ -190,7 +190,7 @@ class CoderAgent(Agent):
 
                             success = sb_success
                             feedback = sb_feedback
-                            self.blocks_result.append(executorResult(block, feedback, success, name))
+                            self.blocks_result.append(executorResult(block, feedback, success, name, save_path))
                             if not success:
                                 self.success = False
                                 self.memory.push('user', feedback)
@@ -199,7 +199,7 @@ class CoderAgent(Agent):
                     output = tool.execute([block])
                     feedback = tool.interpreter_feedback(output)
                     success = not tool.execution_failure_check(output)
-                    self.blocks_result.append(executorResult(block, feedback, success, name))
+                    self.blocks_result.append(executorResult(block, feedback, success, name, save_path))
                     if not success:
                         self.success = False
                         self.memory.push('user', feedback)

@@ -77,6 +77,8 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Auto-reinitialize agent system saat model diganti, feedback di chat
 
 ## Recent Changes
+- 2026-02-14: Fixed all dependencies - installed PyTorch CPU, transformers, adaptive-classifier, and 37 total modules verified
+- 2026-02-14: Updated setup_dependencies.sh with improved reliability, PyTorch CPU fallback, and comprehensive module verification
 - 2026-02-14: Renamed project from "KodeAgent" to "Agent Dzeck AI" across entire codebase
 - 2026-02-14: Updated all prompts (base + jarvis) to use "Agent Dzeck AI" branding
 - 2026-02-14: Fixed parse_agent_tasks bug - removed task_names count dependency, always uses task['task']

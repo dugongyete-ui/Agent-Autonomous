@@ -8,6 +8,7 @@ from sources.text_to_speech import Speech
 from sources.utility import pretty_print, animate_thinking
 from sources.router import AgentRouter
 from sources.speech_to_text import AudioTranscriber, AudioRecorder
+from sources.persistent_memory import PersistentMemory
 import threading
 
 
@@ -38,6 +39,7 @@ class Interaction:
         self.is_generating = False
         self.last_success = False
         self.languages = langs
+        self.persistent_memory = PersistentMemory()
         if tts_enabled:
             try:
                 self.initialize_tts()
@@ -173,9 +175,23 @@ class Interaction:
             push_last_agent_memory = True
         tmp = self.last_answer
         self.current_agent = agent
+
+        memory_context = self.persistent_memory.get_context_for_prompt(self.last_query)
+        enriched_query = self.last_query
+        if memory_context:
+            enriched_query = f"{self.last_query}\n{memory_context}"
+
         self.is_generating = True
-        self.last_answer, self.last_reasoning = await agent.process(self.last_query, self.speech)
+        self.last_answer, self.last_reasoning = await agent.process(enriched_query, self.speech)
         self.is_generating = False
+
+        try:
+            self.persistent_memory.extract_and_store_from_conversation(
+                self.last_query, self.last_answer or ""
+            )
+        except Exception:
+            pass
+
         if push_last_agent_memory and self.current_agent.memory is not None:
             self.current_agent.memory.push('user', self.last_query)
             self.current_agent.memory.push('assistant', self.last_answer)

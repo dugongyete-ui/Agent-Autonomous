@@ -434,34 +434,44 @@ class SafeExecutor:
             except OSError:
                 pass
 
-    def _is_package_install(self, command: str) -> bool:
+    def _is_system_install(self, command: str) -> bool:
         cmd_lower = command.lower().strip()
-        install_patterns = [
-            "pip install", "pip3 install",
-            "npm install", "npm i ", "yarn add", "yarn install",
+        system_patterns = [
             "apt install", "apt-get install", "apt update", "apt-get update",
             "brew install", "conda install",
         ]
-        return any(pattern in cmd_lower for pattern in install_patterns)
+        return any(pattern in cmd_lower for pattern in system_patterns)
 
-    def _is_pip_install(self, command: str) -> bool:
+    def _is_allowed_install(self, command: str) -> bool:
         cmd_lower = command.lower().strip()
-        return cmd_lower.startswith(("pip install", "pip3 install"))
+        allowed_patterns = [
+            "pip install", "pip3 install",
+            "npm install", "npm i ", "yarn add", "yarn install",
+            "npx ", "npm init", "npm create",
+        ]
+        return any(pattern in cmd_lower for pattern in allowed_patterns)
+
+    def _add_pip_safety(self, command: str) -> str:
+        if '--break-system-packages' not in command:
+            command = command.replace('pip install', 'pip install --break-system-packages', 1)
+            command = command.replace('pip3 install', 'pip3 install --break-system-packages', 1)
+        return command
 
     def _execute_shell(self, command: str) -> SandboxResult:
-        if self._is_package_install(command):
-            if self._is_pip_install(command):
-                if '--break-system-packages' not in command:
-                    command = command.replace('pip install', 'pip install --break-system-packages', 1)
-                    command = command.replace('pip3 install', 'pip3 install --break-system-packages', 1)
-                self.logger.info(f"Autonomous: executing pip install: {command[:100]}")
-                return self._execute_shell_raw(command)
-            self.logger.info(f"Skipped non-pip install command: {command[:100]}")
+        if self._is_system_install(command):
+            self.logger.info(f"Blocked system install: {command[:100]}")
             return SandboxResult(
                 success=True,
-                output=f"[skipped] Package install skipped: {command.strip()}",
+                output=f"[blocked] System package install not allowed: {command.strip()}\nGunakan pip/npm/yarn untuk install packages.",
                 errors="", execution_time=0.0, language='bash'
             )
+
+        if self._is_allowed_install(command):
+            cmd_lower = command.lower().strip()
+            if cmd_lower.startswith(("pip install", "pip3 install")):
+                command = self._add_pip_safety(command)
+            self.logger.info(f"Autonomous: executing install: {command[:100]}")
+            return self._execute_shell_raw(command)
 
         is_safe, reason = self.validate_bash(command)
         if not is_safe:

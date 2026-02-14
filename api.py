@@ -569,6 +569,37 @@ async def sandbox_stats():
     return JSONResponse(status_code=200, content={"total_executions": 0})
 
 
+@api.get("/api/scaffolder/templates")
+async def scaffolder_templates():
+    from sources.tools.project_scaffolder import ProjectScaffolder
+    scaffolder = ProjectScaffolder(base_dir=work_dir_path)
+    return JSONResponse(status_code=200, content={"templates": scaffolder.list_templates()})
+
+
+@api.post("/api/scaffolder/create")
+async def scaffolder_create(request: dict):
+    from sources.tools.project_scaffolder import ProjectScaffolder
+    scaffolder = ProjectScaffolder(base_dir=work_dir_path)
+    project_name = request.get("name", "new-project")
+    template = request.get("template", None)
+    description = request.get("description", "")
+    result = scaffolder.scaffold(project_name, template, description)
+    return JSONResponse(status_code=200, content=result)
+
+
+@api.get("/api/memory/stats")
+async def memory_stats():
+    if interaction is None:
+        return JSONResponse(status_code=503, content={"error": "System not initialized"})
+    pm = interaction.persistent_memory
+    return JSONResponse(status_code=200, content={
+        "facts_count": len(pm.facts),
+        "skills_count": len(pm.skills),
+        "preferences": pm.get_preferences(),
+        "recent_projects": pm.get_recent_projects(5),
+    })
+
+
 @api.get("/api/config/models")
 async def get_model_config():
     models_by_provider = {

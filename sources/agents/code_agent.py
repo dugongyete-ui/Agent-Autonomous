@@ -12,6 +12,7 @@ from sources.tools.fileFinder import FileFinder
 from sources.tools.SaveTool import HTMLSaveTool, CSSSaveTool, JSSaveTool, TypeScriptSaveTool, SQLSaveTool
 from sources.tools.terminal import PersistentTerminal
 from sources.tools.web_viewer import WebViewer
+from sources.tools.project_scaffolder import ProjectScaffolder
 from sources.logger import Logger
 from sources.memory import Memory
 from sources.sandbox import Sandbox
@@ -40,6 +41,7 @@ class CoderAgent(Agent):
             self.sandbox = None
         self.terminal = PersistentTerminal(work_dir=self.work_dir)
         self.web_viewer = WebViewer()
+        self.scaffolder = ProjectScaffolder(base_dir=self.work_dir)
         self.role = "code"
         self.type = "code_agent"
         self.logger = Logger("code_agent.log")
@@ -50,6 +52,7 @@ class CoderAgent(Agent):
         self.installed_packages = set()
 
     def add_sys_info_prompt(self, prompt):
+        templates_info = ", ".join([f"{t['key']} ({t['name']})" for t in self.scaffolder.list_templates()])
         info = (
             f"System Info:\n"
             f"OS: {platform.system()} {platform.release()}\n"
@@ -57,17 +60,21 @@ class CoderAgent(Agent):
             f"Environment: Server headless (tanpa display/GUI)\n"
             f"Direktori kerja: {self.work_dir}\n"
             f"Library tersedia: flask, requests, beautifulsoup4, numpy, sqlite3, json, csv, dan library standar Python\n"
-            f"\nMODE AUTONOMOUS AKTIF:\n"
-            f"- Kamu adalah AI Agent Autonomous. LANGSUNG kerjakan tanpa bertanya.\n"
-            f"- Jika butuh install package, sistem akan auto-install.\n"
+            f"Package manager: pip install (auto --break-system-packages), npm install, yarn add (SEMUA DIIZINKAN)\n"
+            f"\nMODE AUTONOMOUS FULL-STACK AKTIF:\n"
+            f"- Kamu adalah AI Agent Autonomous Full-Stack Developer. LANGSUNG kerjakan tanpa bertanya.\n"
+            f"- Kamu BISA install package: pip install, npm install, yarn add - semua diizinkan dan berjalan.\n"
+            f"- Kamu BISA menjalankan: npx, npm init, git, curl, wget, dan command bash lainnya.\n"
             f"- Simpan file dengan format ```bahasa:namafile\n"
             f"- JANGAN tulis app.run(), uvicorn.run(), atau menjalankan server\n"
             f"- Port 5000 SUDAH DIGUNAKAN. JANGAN bind ke port 5000\n"
             f"- JANGAN gunakan Tkinter/GUI desktop (headless)\n"
-            f"- Untuk website: buat HTML statis lengkap (HTML+CSS+JS)\n"
+            f"- Untuk website: buat HTML statis lengkap (HTML+CSS+JS) atau full-stack (Flask/FastAPI + Frontend)\n"
             f"- Untuk backend: simpan file tanpa app.run()\n"
             f"- SELALU buat kode LENGKAP, FUNGSIONAL, dan SIAP PAKAI\n"
-            f"- JANGAN jelaskan, LANGSUNG tulis kode"
+            f"- JANGAN jelaskan, LANGSUNG tulis kode\n"
+            f"- Template project tersedia: {templates_info}\n"
+            f"- Untuk full-stack: buat backend (Flask/FastAPI) + frontend (HTML/CSS/JS) + database (SQLite)"
         )
         return f"{prompt}\n\n{info}"
 

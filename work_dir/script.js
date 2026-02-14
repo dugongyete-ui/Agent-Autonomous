@@ -1,2 +1,4 @@
-// Tambahkan kode JavaScript di sini jika diperlukan
-console.log('Selamat datang di Startup Modern!');
+// Add event listener to button
+document.querySelector('button').addEventListener('click', function() {
+    alert('Terima kasih telah mengunjungi portfolio saya!');
+});

@@ -66,10 +66,11 @@ if not os.path.exists(".screenshots"):
     os.makedirs(".screenshots")
 api.mount("/screenshots", StaticFiles(directory=".screenshots"), name="screenshots")
 
-work_dir_path = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+work_dir_path = os.getenv('WORK_DIR') or config["MAIN"].get("work_dir", "/home/runner/workspace/work")
 if not os.path.exists(work_dir_path):
     os.makedirs(work_dir_path, exist_ok=True)
     print(f"[Agent Dzeck AI] Created work directory: {work_dir_path}")
+print(f"[Agent Dzeck AI] Work directory: {work_dir_path}")
 
 workspace_mgr = WorkspaceManager(base_dir=work_dir_path)
 
@@ -506,7 +507,7 @@ async def list_preview_files():
 
 @api.get("/api/download-zip")
 async def download_project_zip():
-    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    work_dir = work_dir_path
     if not os.path.isdir(work_dir):
         return JSONResponse(status_code=404, content={"error": "Belum ada project yang dibuat. Minta AI untuk membuat project terlebih dahulu."})
     
@@ -541,7 +542,7 @@ async def download_project_zip():
 
 @api.get("/api/project-files")
 async def list_project_files():
-    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    work_dir = work_dir_path
     if not os.path.isdir(work_dir):
         return JSONResponse(status_code=200, content={"files": [], "total": 0})
     
@@ -561,7 +562,7 @@ async def list_project_files():
 
 @api.get("/api/file-content/{file_path:path}")
 async def get_file_content(file_path: str):
-    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    work_dir = work_dir_path
     full_path = os.path.join(work_dir, file_path)
     if not full_path.startswith(os.path.abspath(work_dir)):
         return JSONResponse(status_code=403, content={"error": "Access denied"})
@@ -582,7 +583,7 @@ async def get_file_content(file_path: str):
 
 @api.put("/api/file-content/{file_path:path}")
 async def save_file_content(file_path: str, request: dict):
-    work_dir = config["MAIN"].get("work_dir", "/home/runner/workspace/work")
+    work_dir = work_dir_path
     full_path = os.path.join(work_dir, file_path)
     if not full_path.startswith(os.path.abspath(work_dir)):
         return JSONResponse(status_code=403, content={"error": "Access denied"})

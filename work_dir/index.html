@@ -3,62 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Modern</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Kalkulator Web</title>
+    <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <header>
-        <nav>
-            <ul>
-                <li><a href="#home">Home</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#projects">Projects</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <section id="home">
-            <h1>Selamat Datang di Portfolio Modern</h1>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex.</p>
-            <button>Learn More</button>
-        </section>
-        <section id="about">
-            <h2>Tentang Saya</h2>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex.</p>
-            <img src="profile.jpg" alt="Profile Picture">
-        </section>
-        <section id="projects">
-            <h2>Proyek Saya</h2>
-            <ul>
-                <li>
-                    <h3>Proyek 1</h3>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex.</p>
-                    <img src="project1.jpg" alt="Project 1">
-                </li>
-                <li>
-                    <h3>Proyek 2</h3>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex.</p>
-                    <img src="project2.jpg" alt="Project 2">
-                </li>
-                <li>
-                    <h3>Proyek 3</h3>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex.</p>
-                    <img src="project3.jpg" alt="Project 3">
-                </li>
-            </ul>
-        </section>
-        <section id="contact">
-            <h2>Kontak Saya</h2>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex.</p>
-            <form>
-                <input type="text" placeholder="Nama">
-                <input type="email" placeholder="Email">
-                <textarea placeholder="Pesan"></textarea>
-                <button>Kirim</button>
-            </form>
-        </section>
-    </main>
-    <script src="script.js"></script>
+    <div class="kalkulator">
+        <input type="text" id="layar" disabled>
+        <div class="tombol">
+            <button class="tombol-angka" onclick="tombolKlik(this)">7</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">8</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">9</button>
+            <button class="tombol-operator" onclick="tombolKlik(this)">/</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">4</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">5</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">6</button>
+            <button class="tombol-operator" onclick="tombolKlik(this)">*</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">1</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">2</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">3</button>
+            <button class="tombol-operator" onclick="tombolKlik(this)">-</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">0</button>
+            <button class="tombol-angka" onclick="tombolKlik(this)">.</button>
+            <button class="tombol-operator" onclick="tombolKlik(this)">+</button>
+            <button class="tombol-hapus" onclick="hapus()">C</button>
+            <button class="tombol-samadengan" onclick="samadengan()">=</button>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
 </body>
 </html>

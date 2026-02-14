@@ -273,26 +273,30 @@ async def get_latest_answer():
             "status": "Agent siap" if interaction is not None else "Sistem memulai...",
             "uid": str(uuid.uuid4())
         })
-    uid = str(uuid.uuid4())
-    current_answer = interaction.current_agent.get_formatted_answer() if hasattr(interaction.current_agent, 'get_formatted_answer') else interaction.current_agent.last_answer
-    if not current_answer:
-        current_answer = interaction.current_agent.last_answer or ""
-    if not any(q["answer"] == current_answer for q in query_resp_history):
-        query_resp = {
-            "done": "false",
-            "answer": current_answer,
-            "reasoning": interaction.current_agent.last_reasoning,
+
+    if not is_generating:
+        status_msg = interaction.current_agent.get_status_message if interaction.current_agent else "Siap"
+        return JSONResponse(status_code=200, content={
+            "done": "true",
+            "answer": "",
+            "reasoning": "",
             "agent_name": interaction.current_agent.agent_name if interaction.current_agent else "None",
-            "success": interaction.current_agent.success,
-            "blocks": {f'{i}': block.jsonify() for i, block in enumerate(interaction.get_last_blocks_result())} if interaction.current_agent else {},
-            "status": interaction.current_agent.get_status_message if interaction.current_agent else "No status available",
-            "uid": uid
-        }
-        query_resp_history.append(query_resp)
-        return JSONResponse(status_code=200, content=query_resp)
-    if query_resp_history:
-        return JSONResponse(status_code=200, content=query_resp_history[-1])
-    return JSONResponse(status_code=404, content={"error": "No answer available"})
+            "success": "true",
+            "blocks": {},
+            "status": status_msg,
+            "uid": str(uuid.uuid4())
+        })
+
+    return JSONResponse(status_code=200, content={
+        "done": "false",
+        "answer": "",
+        "reasoning": "",
+        "agent_name": interaction.current_agent.agent_name if interaction.current_agent else "None",
+        "success": "false",
+        "blocks": {},
+        "status": interaction.current_agent.get_status_message if interaction.current_agent else "Memproses...",
+        "uid": str(uuid.uuid4())
+    })
 
 async def think_wrapper(interaction, query):
     try:

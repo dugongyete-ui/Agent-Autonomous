@@ -3,95 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #kalkulator {
-            width: 300px;
-            margin: 50px auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        #kalkulator input {
-            width: 100%;
-            height: 40px;
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-        }
-        #kalkulator button {
-            width: 100%;
-            height: 40px;
-            background-color: #4CAF50;
-            color: #fff;
-            padding: 10px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-        #kalkulator button:hover {
-            background-color: #3e8e41;
-        }
-    </style>
+    <title>Website Drama China</title>
+    <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <div id="kalkulator">
-        <h2>Kalkulator</h2>
-        <input type="number" id="angka1" placeholder="Angka 1">
-        <input type="number" id="angka2" placeholder="Angka 2">
-        <select id="operator">
-            <option value="+">+</option>
-            <option value="-">-</option>
-            <option value="*">*</option>
-            <option value="/">/</option>
-        </select>
-        <button id="tombol">Hitung</button>
-        <p id="hasil"></p>
-    </div>
-
-    <script>
-        const tombol = document.getElementById('tombol');
-        const angka1 = document.getElementById('angka1');
-        const angka2 = document.getElementById('angka2');
-        const operator = document.getElementById('operator');
-        const hasil = document.getElementById('hasil');
-
-        tombol.addEventListener('click', () => {
-            const num1 = parseFloat(angka1.value);
-            const num2 = parseFloat(angka2.value);
-            const oper = operator.value;
-
-            let result;
-            switch (oper) {
-                case '+':
-                    result = num1 + num2;
-                    break;
-                case '-':
-                    result = num1 - num2;
-                    break;
-                case '*':
-                    result = num1 * num2;
-                    break;
-                case '/':
-                    if (num2 !== 0) {
-                        result = num1 / num2;
-                    } else {
-                        hasil.innerText = 'Error: Pembagian dengan nol!';
-                        return;
-                    }
-                    break;
-                default:
-                    hasil.innerText = 'Error: Operator tidak valid!';
-                    return;
-            }
-
-            hasil.innerText = `Hasil: ${result}`;
-        });
-    </script>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="#">Beranda</a></li>
+                <li><a href="#">Drama</a></li>
+                <li><a href="#">Pemeran</a></li>
+                <li><a href="#">Kategori</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section class="hero">
+            <h1>Website Drama China</h1>
+            <p>Selamat datang di website drama China!</p>
+            <button>Explore</button>
+        </section>
+        <section class="drama">
+            <h2>Drama Terbaru</h2>
+            <ul>
+                <li>
+                    <img src="images/drama1.jpg" alt="Drama 1">
+                    <h3>Drama 1</h3>
+                    <p>Deskripsi drama 1</p>
+                </li>
+                <li>
+                    <img src="images/drama2.jpg" alt="Drama 2">
+                    <h3>Drama 2</h3>
+                    <p>Deskripsi drama 2</p>
+                </li>
+                <li>
+                    <img src="images/drama3.jpg" alt="Drama 3">
+                    <h3>Drama 3</h3>
+                    <p>Deskripsi drama 3</p>
+                </li>
+            </ul>
+        </section>
+        <section class="pemeran">
+            <h2>Pemeran Terkenal</h2>
+            <ul>
+                <li>
+                    <img src="images/pemeran1.jpg" alt="Pemeran 1">
+                    <h3>Pemeran 1</h3>
+                    <p>Deskripsi pemeran 1</p>
+                </li>
+                <li>
+                    <img src="images/pemeran2.jpg" alt="Pemeran 2">
+                    <h3>Pemeran 2</h3>
+                    <p>Deskripsi pemeran 2</p>
+                </li>
+                <li>
+                    <img src="images/pemeran3.jpg" alt="Pemeran 3">
+                    <h3>Pemeran 3</h3>
+                    <p>Deskripsi pemeran 3</p>
+                </li>
+            </ul>
+        </section>
+        <section class="kategori">
+            <h2>Kategori Drama</h2>
+            <ul>
+                <li><a href="#">Romantis</a></li>
+                <li><a href="#">Aksi</a></li>
+                <li><a href="#">Komedi</a></li>
+            </ul>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2024 Website Drama China</p>
+    </footer>
+    <script src="js/app.js"></script>
 </body>
 </html>

@@ -58,6 +58,13 @@ Agent Dzeck AI adalah sistem AI agent otonom dengan kemampuan browsing web, ekse
 - Project name: Agent Dzeck AI
 
 ## Recent Changes
+- 2026-02-14: CRITICAL FIX - Tag matching collision: `\`\`\`c` matched `\`\`\`css`, `\`\`\`java` matched `\`\`\`javascript`
+  - Added `_is_exact_tag_match()` in tools.py - checks next char after tag is non-alphabetical
+  - CSS/JS files were being "executed" as C/Java instead of saved - now properly saved to disk
+  - Preview/Editor/Files tabs were empty because files were never saved correctly
+- 2026-02-14: FIX - Duplicate responses in chat: `/latest_answer` polling + `/query` POST both adding messages
+  - `/latest_answer` now only returns status updates during processing, not answer content
+  - Only `/query` POST returns the final answer, preventing duplicates
 - 2026-02-14: CRITICAL FIX - Fixed "block:0, block:1" placeholder text in AI responses
   - Added `get_formatted_answer()` method to Agent base class - replaces block markers with meaningful file/execution summaries
   - Updated `executorResult` schema to include `save_path` for filename tracking

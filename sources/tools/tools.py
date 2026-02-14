@@ -154,6 +154,17 @@ class Tools():
         self.excutable_blocks_found = False
         return tmp
 
+    def _is_exact_tag_match(self, llm_text: str, pos: int) -> bool:
+        """
+        Check if the tag at position pos is an exact match (not a prefix of another tag).
+        E.g., ```c should not match ```css, ```java should not match ```javascript.
+        """
+        tag_end_pos = pos + len(f'```{self.tag}')
+        if tag_end_pos >= len(llm_text):
+            return True
+        next_char = llm_text[tag_end_pos]
+        return not next_char.isalpha()
+
     def load_exec_block(self, llm_text: str):
         """
         Extract code/query blocks from LLM-generated text and process them for execution.
@@ -180,6 +191,10 @@ class Tools():
             if start_pos == -1:
                 break
 
+            if not self._is_exact_tag_match(llm_text, start_pos):
+                start_index = start_pos + len(start_tag)
+                continue
+
             line_start = llm_text.rfind('\n', 0, start_pos)+1
             leading_whitespace = llm_text[line_start:start_pos]
 
@@ -203,6 +218,8 @@ class Tools():
             self.excutable_blocks_found = True
             code_blocks.append(content)
             start_index = end_pos + len(end_tag)
+        if not code_blocks:
+            return None, None
         self.logger.info(f"Found {len(code_blocks)} blocks to execute")
         return code_blocks, save_path
     
